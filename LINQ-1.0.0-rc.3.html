@@ -1,0 +1,1708 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0B0B0D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LINQ">
+<meta name="description" content="LINQ — 1台で遊ぶスパイ発見ゲーム">
+<title>LINQ</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B0B0D'/%3E%3Cpath d='M22 20v24h20' stroke='%23C9A76A' stroke-width='5' fill='none' stroke-linecap='square'/%3E%3C/svg%3E">
+<style>
+  *, *::before, *::after{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  :root{
+    /* ---- ink & brass ---- */
+    --ink:#0B0B0D;
+    --ink-2:#0E0F12;
+    --panel:#14161A;
+    --panel-2:#191C21;
+    --raised:#20242A;
+    --line:rgba(255,255,255,.075);
+    --line-2:rgba(255,255,255,.16);
+    --bone:#F4F1EA;
+    --bone-2:rgba(244,241,234,.64);
+    --bone-3:rgba(244,241,234,.38);
+    --brass:#C9A76A;
+    --brass-hi:#E7CB96;
+    --brass-soft:rgba(201,167,106,.10);
+    --brass-line:rgba(201,167,106,.38);
+    --jade:#7FB08E;
+    --jade-soft:rgba(127,176,142,.10);
+    --crimson:#C8564B;
+    --crimson-soft:rgba(200,86,75,.10);
+    --r:10px;
+    --r-lg:16px;
+    --shadow:0 18px 44px -20px rgba(0,0,0,.85);
+    --inner:inset 0 1px 0 rgba(255,255,255,.045);
+    --font:-apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP", "Segoe UI", Roboto, sans-serif;
+    --mono:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --ease:cubic-bezier(.2,.75,.25,1);
+  }
+
+  html{ background:var(--ink); }
+  body{
+    position:relative; min-height:100dvh; color:var(--bone); font-family:var(--font);
+    font-size:16px; line-height:1.62; letter-spacing:.005em;
+    background:
+      radial-gradient(120% 70% at 50% -10%, rgba(201,167,106,.075), transparent 60%),
+      radial-gradient(90% 60% at 50% 110%, rgba(120,150,190,.05), transparent 65%),
+      var(--ink);
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  }
+  /* film grain — 質感 */
+  body::after{
+    content:""; position:fixed; inset:0; z-index:50; pointer-events:none; opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+    mix-blend-mode:overlay;
+  }
+
+  .app{ position:relative; z-index:1; max-width:540px; margin:0 auto;
+        padding:calc(20px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right))
+                calc(56px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left)); }
+
+  /* ---------------- header ---------------- */
+  .topbar{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .brand{ display:flex; align-items:center; gap:9px; min-width:0; }
+  .brand svg{ display:block; }
+  .brand-mark{ font-family:var(--mono); font-size:16px; font-weight:700; letter-spacing:.24em; }
+  .brand-sub{ font-size:11px; color:var(--bone-3); letter-spacing:.14em; white-space:nowrap; }
+  .topbar-right{ display:flex; align-items:center; gap:8px; }
+  .icon-btn{ appearance:none; display:inline-flex; align-items:center; gap:6px; background:transparent;
+    border:1px solid var(--line); color:var(--bone-2); font-family:inherit; font-size:12px; letter-spacing:.04em;
+    padding:7px 11px; border-radius:999px; cursor:pointer; white-space:nowrap;
+    transition:background .18s var(--ease), color .18s var(--ease), border-color .18s var(--ease), transform .12s var(--ease); }
+  .icon-btn:hover{ background:rgba(255,255,255,.045); color:var(--bone); border-color:var(--line-2); }
+  .icon-btn:active{ transform:scale(.96); }
+  .icon-btn svg{ display:block; }
+  #btn-sound{ padding:7px 9px; }
+  .step{ font-family:var(--mono); font-size:11px; color:var(--bone-3); letter-spacing:.08em; white-space:nowrap; }
+
+  /* ---------------- progress rail ---------------- */
+  .rail{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:18px 0 26px; }
+  .rail-seg{ display:flex; flex-direction:column; gap:7px; }
+  .rail-bar{ height:2px; border-radius:2px; background:rgba(255,255,255,.09); overflow:hidden; }
+  .rail-bar::after{ content:""; display:block; height:100%; width:0; background:var(--brass);
+                    transition:width .6s var(--ease); }
+  .rail-seg[data-state="done"] .rail-bar::after{ width:100%; background:rgba(201,167,106,.45); }
+  .rail-seg[data-state="active"] .rail-bar::after{ width:100%; }
+  .rail-label{ font-size:10.5px; letter-spacing:.12em; color:var(--bone-3); }
+  .rail-seg[data-state="active"] .rail-label{ color:var(--brass-hi); }
+  .rail-seg[data-state="done"] .rail-label{ color:var(--bone-2); }
+
+  /* ---------------- typography ---------------- */
+  .eyebrow{ font-family:var(--mono); font-size:10.5px; letter-spacing:.2em; text-transform:uppercase;
+            color:var(--brass); margin-bottom:9px; }
+  h1{ font-size:27px; line-height:1.28; font-weight:700; letter-spacing:-.02em; }
+  h2{ font-size:23px; line-height:1.34; font-weight:700; letter-spacing:-.02em; }
+  .lede{ font-size:14px; line-height:1.72; color:var(--bone-2); margin-top:9px; }
+  .section-title{ display:flex; align-items:center; gap:10px; font-size:11px; font-weight:600;
+                  letter-spacing:.16em; text-transform:uppercase; color:var(--bone-3); margin-bottom:11px; }
+  .section-title::after{ content:""; flex:1; height:1px; background:var(--line); }
+  .hint{ font-size:12.5px; line-height:1.6; color:var(--bone-3); }
+  .hint.warn{ color:#E6A79E; }
+
+  /* ---------------- surfaces ---------------- */
+  .card{ position:relative; background:linear-gradient(180deg, var(--panel-2), var(--panel));
+         border:1px solid var(--line); border-radius:var(--r-lg); padding:18px;
+         box-shadow:var(--inner), var(--shadow); }
+  .stack-8 > * + *{ margin-top:8px; }
+  .stack-10 > * + *{ margin-top:10px; }
+  .stack-14 > * + *{ margin-top:14px; }
+  .stack-28 > * + *{ margin-top:28px; }
+  .divider{ height:1px; background:var(--line); }
+
+  /* ---------------- buttons ---------------- */
+  button{ font-family:inherit; font-size:16px; cursor:pointer; }
+  .btn{ position:relative; width:100%; min-height:52px; border-radius:var(--r); border:1px solid transparent;
+        display:inline-flex; align-items:center; justify-content:center; gap:9px; padding:13px 20px;
+        font-weight:700; letter-spacing:.02em; overflow:hidden;
+        transition:transform .12s var(--ease), filter .18s var(--ease), background .18s var(--ease), border-color .18s var(--ease); }
+  .btn:active{ transform:scale(.985); }
+  .btn:focus-visible{ outline:2px solid var(--brass); outline-offset:3px; }
+  .btn-primary{ color:#151208; background:linear-gradient(180deg, var(--brass-hi), var(--brass));
+                box-shadow:0 1px 0 rgba(255,255,255,.35) inset, 0 12px 28px -14px rgba(201,167,106,.75); }
+  .btn-primary:hover{ filter:brightness(1.06); }
+  .btn-secondary{ background:var(--raised); color:var(--bone); border-color:var(--line); }
+  .btn-secondary:hover{ background:#272c33; }
+  .btn-quiet{ background:transparent; color:var(--bone-2); border-color:var(--line-2); }
+  .btn-quiet:hover{ background:rgba(255,255,255,.045); color:var(--bone); }
+  .btn:disabled{ opacity:.32; cursor:not-allowed; box-shadow:none; }
+  .btn-row{ display:flex; gap:10px; }
+  .btn-row .btn{ flex:1; }
+  .btn-mini{ appearance:none; background:transparent; border:1px solid var(--line); color:var(--bone-2);
+             border-radius:999px; padding:6px 12px; font-size:12px; letter-spacing:.03em; cursor:pointer;
+             transition:background .18s var(--ease), color .18s var(--ease), border-color .18s var(--ease); }
+  .btn-mini:hover{ background:rgba(255,255,255,.05); color:var(--bone); border-color:var(--line-2); }
+
+  /* ---------------- segmented ---------------- */
+  .seg{ display:grid; gap:7px; }
+  .seg.cols-5{ grid-template-columns:repeat(5,1fr); }
+  .seg.cols-3{ grid-template-columns:repeat(3,1fr); }
+  .seg.cols-2{ grid-template-columns:repeat(2,1fr); }
+  .seg button{ min-height:50px; border-radius:var(--r); border:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.012));
+    color:var(--bone-2); font-family:var(--mono); font-size:16px; font-weight:700; letter-spacing:.04em;
+    transition:all .18s var(--ease); }
+  .seg button:hover{ color:var(--bone); border-color:var(--line-2); }
+  .seg button[aria-pressed="true"]{ color:#151208; border-color:transparent;
+    background:linear-gradient(180deg, var(--brass-hi), var(--brass));
+    box-shadow:0 1px 0 rgba(255,255,255,.3) inset, 0 10px 22px -14px rgba(201,167,106,.8); }
+  .seg.subtle button{ min-height:42px; font-size:14px; }
+
+  /* ---------------- inputs ---------------- */
+  input[type="text"]{ width:100%; min-height:52px; background:rgba(255,255,255,.03); color:var(--bone);
+    border:1px solid var(--line); border-radius:var(--r); padding:13px 15px;
+    font-family:inherit; font-size:16px; outline:none;
+    transition:border-color .18s var(--ease), background .18s var(--ease), box-shadow .18s var(--ease); }
+  input[type="text"]::placeholder{ color:var(--bone-3); }
+  input[type="text"]:focus{ border-color:var(--brass-line); background:rgba(255,255,255,.05);
+                            box-shadow:0 0 0 3px rgba(201,167,106,.10); }
+  .field{ display:flex; align-items:center; gap:11px; }
+  .field-tag{ font-family:var(--mono); font-size:11px; color:var(--bone-3); width:24px; flex-shrink:0; letter-spacing:.06em; }
+  .field-row{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:11px; }
+
+  /* ---------------- rows / list ---------------- */
+  .row{ position:relative; width:100%; min-height:60px; border-radius:var(--r);
+    background:linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.012));
+    border:1px solid var(--line); padding:12px 15px; display:flex; align-items:center; gap:12px;
+    text-align:left; color:var(--bone); transition:all .18s var(--ease); }
+  .row.button:hover{ border-color:var(--brass-line); background:rgba(201,167,106,.06); transform:translateY(-1px); }
+  .row.button:active{ transform:scale(.99); }
+  .row.done{ background:transparent; border-style:dashed; opacity:.62; }
+  .row:disabled{ cursor:default; }
+  .avatar{ width:34px; height:34px; border-radius:50%; flex-shrink:0; display:flex; align-items:center;
+    justify-content:center; background:rgba(255,255,255,.06); border:1px solid var(--line);
+    font-family:var(--mono); font-size:12.5px; font-weight:700; color:var(--bone-2); letter-spacing:.02em; }
+  .row-main{ flex:1; min-width:0; }
+  .row-name{ display:block; font-size:15px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .row-meta{ display:block; font-size:12px; color:var(--bone-3); letter-spacing:.02em; }
+  .row-meta.ok{ color:var(--jade); }
+  .chev{ color:var(--bone-3); font-size:17px; flex-shrink:0; }
+
+  /* ---------------- role card ---------------- */
+  .cover{ position:relative; border-radius:var(--r-lg); border:1px dashed var(--line-2);
+    background:radial-gradient(120% 80% at 50% 0%, rgba(201,167,106,.07), transparent 70%), rgba(255,255,255,.02);
+    padding:44px 20px; text-align:center; cursor:pointer; overflow:hidden;
+    transition:border-color .2s var(--ease), background .2s var(--ease); }
+  .cover:hover{ border-color:var(--brass-line); }
+  .cover .seal{ width:54px; height:54px; margin:0 auto 14px; border-radius:50%; border:1px solid var(--brass-line);
+    display:flex; align-items:center; justify-content:center; color:var(--brass);
+    background:rgba(201,167,106,.07); animation:pulse 2.6s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(201,167,106,.25); } 50%{ box-shadow:0 0 0 12px rgba(201,167,106,0); } }
+  .cover-text{ font-size:14px; color:var(--bone-2); letter-spacing:.04em; }
+  .cover-sub{ font-size:12px; color:var(--bone-3); margin-top:5px; }
+
+  /* 役割カードは高さ・色・枠を完全に同一にする。
+     カードの形が変わると、隣からの一瞥でスパイが推測できてしまう。 */
+  .role{ position:relative; border-radius:var(--r-lg); border:1px solid var(--line);
+    background:linear-gradient(180deg, var(--panel-2), var(--panel)); padding:34px 22px; text-align:center;
+    box-shadow:var(--inner), var(--shadow); overflow:hidden;
+    min-height:262px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    animation:cardIn .5s var(--ease) both; }
+  @keyframes cardIn{ from{ opacity:0; transform:translateY(8px) scale(.99); } to{ opacity:1; transform:none; } }
+  .role::before{ content:""; position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(90% 60% at 50% 0%, rgba(255,255,255,.055), transparent 70%); }
+  .role.spy{ border-color:var(--brass-line); background:linear-gradient(180deg, rgba(201,167,106,.13), var(--panel)); }
+  .role.civ{ border-color:var(--line-2); }
+  .role-label{ font-family:var(--mono); font-size:10.5px; letter-spacing:.24em; text-transform:uppercase; color:var(--bone-3); }
+  .role.spy .role-label{ color:var(--brass); }
+  .role-keyword{ font-size:34px; line-height:1.2; font-weight:700; margin-top:12px; letter-spacing:-.02em; word-break:break-all; }
+  .role-note{ font-size:13px; line-height:1.7; color:var(--bone-2); margin-top:14px; }
+  .role-rule{ display:inline-flex; margin-top:16px; }
+
+  /* ---------------- badges ---------------- */
+  .badge{ display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:6px 12px;
+    font-size:12px; font-weight:600; letter-spacing:.02em; border:1px solid var(--line);
+    color:var(--bone-2); background:rgba(255,255,255,.035); }
+  .badge.brass{ background:var(--brass-soft); border-color:var(--brass-line); color:var(--brass-hi); }
+  .badge.jade{ background:var(--jade-soft); border-color:rgba(127,176,142,.35); color:#A6CDB2; }
+  .badge-row{ display:flex; flex-wrap:wrap; gap:8px; }
+
+  /* ---------------- turn / order ---------------- */
+  .turn-head{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .turn-name{ font-size:17px; font-weight:700; letter-spacing:-.01em; }
+  .turn-meta{ font-family:var(--mono); font-size:11px; color:var(--bone-3); letter-spacing:.08em; }
+  .order-strip{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:15px; }
+  .order-chip{ font-size:11.5px; letter-spacing:.02em; padding:4px 10px; border-radius:999px;
+    border:1px solid var(--line); color:var(--bone-3); background:rgba(255,255,255,.025); }
+  .order-chip.done{ opacity:.5; text-decoration:line-through; }
+  .order-chip.now{ color:#151208; font-weight:700; border-color:transparent;
+    background:linear-gradient(180deg, var(--brass-hi), var(--brass)); }
+  .counter{ font-family:var(--mono); font-size:11px; color:var(--bone-3); }
+
+  /* ---------------- log ---------------- */
+  .log-round{ font-family:var(--mono); font-size:10.5px; letter-spacing:.2em; text-transform:uppercase;
+              color:var(--brass); margin-bottom:6px; }
+  .log-item{ display:flex; align-items:baseline; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); }
+  .log-item:last-child{ border-bottom:none; }
+  .log-name{ font-size:12.5px; color:var(--bone-3); width:92px; flex-shrink:0; overflow:hidden;
+             text-overflow:ellipsis; white-space:nowrap; }
+  .log-word{ font-size:16px; font-weight:600; letter-spacing:.01em; word-break:break-word; }
+  .log-target{ font-size:14px; font-weight:500; color:var(--bone-2); }
+  .empty{ font-size:12.5px; color:var(--bone-3); padding:6px 0; }
+
+  /* ---------------- vote ---------------- */
+  .pick{ width:100%; min-height:60px; border-radius:var(--r); border:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.012));
+    padding:12px 15px; display:flex; align-items:center; gap:12px; color:var(--bone); text-align:left;
+    transition:all .18s var(--ease); }
+  .pick:hover{ border-color:var(--line-2); }
+  .pick[aria-pressed="true"]{ border-color:var(--brass-line); background:rgba(201,167,106,.10); }
+  .pick .mark{ width:22px; height:22px; border-radius:50%; border:1px solid var(--line-2); flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-size:12px; color:#151208;
+    transition:all .18s var(--ease); }
+  .pick[aria-pressed="true"] .mark{ background:var(--brass); border-color:var(--brass); }
+
+  /* ---------------- results ---------------- */
+  .stage{ opacity:0; visibility:hidden; pointer-events:none; }
+  .stage.in{ opacity:1; visibility:visible; pointer-events:auto; animation:stageIn .55s var(--ease) both; }
+  @keyframes stageIn{ from{ opacity:0; transform:translateY(12px); } to{ opacity:1; transform:none; } }
+
+  .drumroll{ text-align:center; padding:30px 18px; overflow:hidden; }
+  .drum-label{ font-family:var(--mono); font-size:10.5px; letter-spacing:.24em; text-transform:uppercase; color:var(--bone-3); }
+  .drum-word{ font-size:36px; line-height:1.2; font-weight:700; margin-top:12px; letter-spacing:-.03em; word-break:break-all; }
+  .drum-word.rolling{ color:var(--bone-3); filter:blur(.6px); }
+  .drum-word.pop{ animation:pop .6s cubic-bezier(.2,.9,.3,1.25) both; }
+  @keyframes pop{ 0%{ opacity:0; transform:scale(.84); filter:blur(8px); }
+                  60%{ opacity:1; transform:scale(1.06); filter:blur(0); } 100%{ transform:scale(1); } }
+
+  .verdict{ position:relative; overflow:hidden; border-radius:var(--r-lg); border:1px solid var(--line);
+    background:linear-gradient(180deg, var(--panel-2), var(--panel)); padding:30px 22px; text-align:center;
+    box-shadow:var(--inner), var(--shadow); }
+  .verdict::after{ content:""; position:absolute; left:10%; right:10%; top:-110px; height:220px; pointer-events:none;
+    background:radial-gradient(closest-side, rgba(255,255,255,.14), transparent); }
+  .verdict.spy{ border-color:var(--brass-line); background:linear-gradient(180deg, rgba(201,167,106,.15), var(--panel)); }
+  .verdict.civ{ border-color:rgba(127,176,142,.38); background:linear-gradient(180deg, rgba(127,176,142,.13), var(--panel)); }
+  .verdict-kicker{ font-family:var(--mono); font-size:10.5px; letter-spacing:.3em; color:var(--bone-3); }
+  .verdict.spy .verdict-kicker{ color:var(--brass); }
+  .verdict.civ .verdict-kicker{ color:#A6CDB2; }
+  .verdict-title{ font-size:31px; line-height:1.24; font-weight:700; margin-top:10px; letter-spacing:-.03em; }
+  .verdict-sub{ font-size:13.5px; line-height:1.7; color:var(--bone-2); margin-top:12px; }
+
+  .chip-row .badge{ animation:chipIn .45s cubic-bezier(.2,.8,.3,1.1) both; }
+  @keyframes chipIn{ from{ opacity:0; transform:translateY(7px) scale(.9); } to{ opacity:1; transform:none; } }
+
+  .score{ display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid var(--line); }
+  .score:last-child{ border-bottom:none; }
+  .score-main{ flex:1; min-width:0; }
+  .score-name{ font-size:15px; font-weight:600; display:flex; align-items:center; gap:7px; }
+  .score-tag{ font-family:var(--mono); font-size:10px; letter-spacing:.14em; color:var(--brass); }
+  .rank{ font-family:var(--mono); font-size:11px; color:var(--bone-3); width:18px; flex-shrink:0; }
+  .bar{ height:3px; border-radius:2px; background:rgba(255,255,255,.07); overflow:hidden; margin-top:8px; }
+  .bar > span{ display:block; height:100%; width:0; border-radius:2px; background:var(--line-2);
+               transition:width .9s var(--ease); }
+  .bar.lead > span{ background:linear-gradient(90deg, var(--brass), var(--brass-hi)); }
+  .score-delta{ font-family:var(--mono); font-size:12.5px; color:var(--jade); }
+  .score-delta.zero{ color:var(--bone-3); }
+  .score-delta.up{ animation:chipIn .4s ease both; }
+  .score-total{ font-family:var(--mono); font-size:17px; font-weight:700; width:42px; text-align:right; }
+  .win-note{ display:flex; align-items:center; gap:9px; font-size:14px; font-weight:600;
+             color:var(--brass-hi); margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
+  .outcome{ font-size:13.5px; line-height:1.8; color:var(--bone-2); }
+  .outcome strong{ color:var(--bone); font-weight:700; }
+
+  .rules li{ list-style:none; font-size:13.5px; line-height:1.75; color:var(--bone-2);
+             padding:4px 0 4px 15px; position:relative; }
+  .rules li::before{ content:""; position:absolute; left:0; top:14px; width:4px; height:4px;
+                     border-radius:50%; background:var(--brass-line); }
+  .rules-head{ font-family:var(--mono); font-size:10.5px; letter-spacing:.2em; text-transform:uppercase;
+               color:var(--bone-3); margin:15px 0 5px; }
+  .rules-head:first-child{ margin-top:0; }
+
+  #confetti{ position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:60; }
+  .skip-hint{ text-align:center; font-size:11.5px; letter-spacing:.08em; color:var(--bone-3); }
+
+  /* ---------------- motion / utility ---------------- */
+  @keyframes shake{ 0%,100%{ transform:translateX(0); } 15%{ transform:translateX(-8px); } 30%{ transform:translateX(7px); }
+    45%{ transform:translateX(-5px); } 60%{ transform:translateX(3px); } 80%{ transform:translateX(-2px); } }
+  .shake{ animation:shake .55s cubic-bezier(.36,.07,.19,.97) both; }
+  @keyframes flash{ 0%{ box-shadow:0 0 0 0 rgba(255,255,255,.30); } 100%{ box-shadow:0 0 0 26px rgba(255,255,255,0); } }
+  .flash{ animation:flash .8s ease-out both; }
+  .hidden{ display:none !important; }
+  .screen-in{ animation:screenIn .38s var(--ease) both; }
+  @keyframes screenIn{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:none; } }
+  .resume{ display:flex; align-items:center; gap:12px; }
+  .resume .badge{ flex-shrink:0; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation:none !important; transition:none !important; }
+  }
+
+  /* ---------------- tablet / iPad ---------------- */
+  @media (max-width:520px){ .brand-sub{ display:none; } }
+  @media (min-width:700px){
+    body{ font-size:17px; }
+    .app{ max-width:780px;
+          padding:calc(34px + env(safe-area-inset-top)) calc(32px + env(safe-area-inset-right))
+                  calc(80px + env(safe-area-inset-bottom)) calc(32px + env(safe-area-inset-left)); }
+    .rail{ margin:24px 0 34px; }
+    .rail-label{ font-size:11.5px; }
+    .brand-mark{ font-size:18px; }
+    h1{ font-size:38px; } h2{ font-size:30px; }
+    .lede{ font-size:16px; max-width:62ch; }
+    .card{ padding:26px; }
+    .stack-28 > * + *{ margin-top:36px; }
+    .btn{ min-height:58px; font-size:17px; }
+    .seg button{ min-height:60px; font-size:18px; }
+    .seg.subtle button{ min-height:48px; font-size:15px; }
+    input[type="text"]{ min-height:58px; font-size:17px; }
+    .row, .pick{ min-height:68px; padding:14px 18px; }
+    .row-name{ font-size:16px; }
+    .avatar{ width:38px; height:38px; font-size:14px; }
+    .role{ padding:52px 30px; min-height:340px; }
+    .role-keyword{ font-size:46px; }
+    .cover{ padding:70px 24px; }
+    .drum-word{ font-size:50px; }
+    .verdict-title{ font-size:42px; }
+    .verdict-sub{ font-size:15px; }
+    .log-name{ width:124px; font-size:13.5px; }
+    .log-word{ font-size:17px; }
+    #name-fields, #reveal-list, #vote-list, #vote-options{
+      display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
+    #name-fields > * + *, #reveal-list > * + *, #vote-list > * + *, #vote-options > * + *{ margin-top:0; }
+    #name-fields > .hint{ grid-column:1 / -1; }
+  }
+  @media (min-width:1024px){ .app{ max-width:880px; } }
+
+  :root{color-scheme:dark;--bone-3:rgba(244,241,234,.64);}
+  button:focus-visible,summary:focus-visible{outline:2px solid var(--brass);outline-offset:4px;}
+  .cover{width:100%;color:var(--bone);font:inherit;}
+  .role-keyword{display:flex;align-items:center;justify-content:center;min-height:82px;font-size:clamp(24px,6.7vw,34px);}
+  .role-note{min-height:68px;}
+  .role{min-height:302px;}
+  .icon-btn,.btn-mini{min-height:44px;}
+  .score-name{flex-wrap:wrap;overflow-wrap:anywhere;}
+  .btn-row{flex-wrap:wrap;}.btn-row .btn{flex-basis:170px;}
+  .resume{flex-wrap:wrap;}.resume .row-main{flex-basis:180px;}
+  .brand{flex-shrink:0;}.topbar-right{flex-wrap:wrap;justify-content:flex-end;}
+  @media(min-width:700px){.role-keyword{font-size:40px;min-height:96px;}.role-note{min-height:68px;}.role{min-height:358px;}}
+
+  .confirm-layer{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.78);overflow-y:auto;}
+  .confirm-card{width:100%;max-width:460px;max-height:calc(100dvh - 40px);overflow-y:auto;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M7 5v14h10" stroke="#C9A76A" stroke-width="2.2" stroke-linecap="square"/>
+        <circle cx="7" cy="5" r="2" fill="#C9A76A"/>
+        <circle cx="17" cy="19" r="2" fill="#C9A76A"/>
+      </svg>
+      <span class="brand-mark">LINQ</span>
+      <span class="brand-sub">スパイ発見ゲーム</span>
+    </div>
+    <div class="topbar-right">
+      <button type="button" class="icon-btn hidden" id="btn-back">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M14 5l-7 7 7 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        戻る
+      </button>
+      <button type="button" class="icon-btn" id="btn-sound" aria-pressed="true" title="効果音" aria-label="効果音の切替え"></button>
+      <div class="step" id="step-label"></div>
+    </div>
+  </header>
+
+  <div class="rail" id="rail">
+    <div class="rail-seg" data-step="1"><div class="rail-bar"></div><div class="rail-label">役割</div></div>
+    <div class="rail-seg" data-step="2"><div class="rail-bar"></div><div class="rail-label">ワード</div></div>
+    <div class="rail-seg" data-step="3"><div class="rail-bar"></div><div class="rail-label">投票</div></div>
+    <div class="rail-seg" data-step="4"><div class="rail-bar"></div><div class="rail-label">結果</div></div>
+  </div>
+
+  <!-- ============ SETUP ============ -->
+  <section id="s-setup" class="screen stack-28">
+    <div>
+      <p class="eyebrow">Setup</p>
+      <h2>ゲームの準備</h2>
+      <p class="lede">人数と名前を入力して開始します。役割確認・連想ワード・投票までこの1台で進行できます。</p>
+    </div>
+
+    <div class="card resume hidden" id="resume-card">
+      <span class="badge brass">中断あり</span>
+      <div class="row-main">
+        <span class="row-name" id="resume-title">前回の続き</span>
+        <span class="row-meta" id="resume-meta"></span>
+      </div>
+      <button type="button" class="btn-mini" id="btn-resume">再開</button>
+      <button type="button" class="btn-mini" id="btn-discard">破棄</button>
+    </div>
+
+    <div>
+      <p class="section-title">プレイヤー人数</p>
+      <div class="seg cols-5" id="count-row"></div>
+      <p class="hint" style="margin-top:10px" id="spy-hint">4〜6人はスパイ2人／7〜8人はスパイ3人</p>
+    </div>
+
+    <div>
+      <div class="field-row">
+        <p class="section-title" style="margin:0">名前</p>
+        <button type="button" class="btn-mini hidden" id="btn-autoname">おまかせ</button>
+      </div>
+      <div class="stack-8" id="name-fields"></div>
+    </div>
+
+    <div>
+      <p class="section-title">ゲーム設定</p>
+      <div class="stack-14">
+        <div>
+          <p class="hint" style="margin-bottom:7px">1ゲームのラウンド数（連想ワードの周回数）</p>
+          <div class="seg cols-3 subtle" id="rounds-row"></div>
+        </div>
+        <div>
+          <p class="hint" style="margin-bottom:7px">勝利に必要な点数</p>
+          <div class="seg cols-3 subtle" id="win-row"></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="hint warn hidden" id="setup-error" role="alert"></p>
+    <p class="hint warn hidden" id="save-warning" role="alert"></p>
+    <details class="card"><summary>遊び方・得点ルール</summary><ul class="rules" id="setup-rules"></ul></details>
+    <button class="btn btn-primary" id="btn-start" disabled>ゲームを開始</button>
+    <p class="hint" id="storage-status" role="status"></p>
+    <p class="hint">1台を回して遊ぶ対面ゲームです。画面の覗き見や、端末の開発者ツールによる閲覧を防ぐものではありません。役割確認・投票中は端末を本人だけが見てください。</p>
+    <p class="hint" id="release-label"></p>
+  </section>
+
+  <!-- ============ REVEAL LIST ============ -->
+  <section id="s-reveal-list" class="screen stack-28 hidden">
+    <div>
+      <p class="eyebrow">Step 1 — 役割確認</p>
+      <h2>順番に端末を回す</h2>
+      <p class="lede">自分の名前をタップしてカードを確認し、次の人へ渡してください。</p>
+    </div>
+    <div class="stack-8" id="reveal-list"></div>
+  </section>
+
+  <!-- ============ REVEAL CARD ============ -->
+  <section id="s-reveal-card" class="screen stack-28 hidden">
+    <div>
+      <p class="eyebrow" id="reveal-name"></p>
+      <h2>あなたのカード</h2>
+      <p class="lede">周りに見えないように確認してください。</p>
+    </div>
+    <div id="reveal-slot"></div>
+    <div class="btn-row" id="reveal-actions"></div>
+  </section>
+
+  <!-- ============ ROUND ============ -->
+  <section id="s-round" class="screen stack-28 hidden">
+    <div>
+      <p class="eyebrow" id="round-eyebrow"></p>
+      <h2 id="round-heading"></h2>
+      <p class="lede" id="round-lede"></p>
+    </div>
+
+    <div class="card">
+      <div class="turn-head">
+        <span class="avatar" id="turn-avatar"></span>
+        <div class="row-main">
+          <div class="turn-name" id="turn-label" aria-live="polite"></div>
+          <div class="turn-meta" id="turn-meta"></div>
+        </div>
+      </div>
+      <div class="order-strip" id="order-hint"></div>
+      <div class="stack-10">
+        <input type="text" aria-label="連想ワード" id="word-input" maxlength="14" placeholder="連想ワードを入力" autocomplete="off" enterkeyhint="done">
+        <p class="hint hidden warn" role="alert" id="word-error"></p>
+        <button class="btn btn-primary" id="btn-submit-word">記録する</button>
+      </div>
+    </div>
+
+    <div>
+      <p class="section-title">ログ</p>
+      <div class="card" id="log"></div>
+    </div>
+  </section>
+
+  <!-- ============ VOTE LIST ============ -->
+  <section id="s-vote-list" class="screen stack-28 hidden">
+    <div>
+      <p class="eyebrow">Step 3 — 投票</p>
+      <h2>ひとりずつ投票</h2>
+      <p class="lede">端末を回して自分の名前をタップ。投票内容は結果発表まで公開されません。</p>
+    </div>
+    <div class="stack-8" id="vote-list"></div>
+    <div>
+      <p class="section-title">ログを見返す</p>
+      <div class="card" id="log-vote"></div>
+    </div>
+  </section>
+
+  <!-- ============ VOTE CARD ============ -->
+  <section id="s-vote-card" class="screen stack-28 hidden">
+    <div>
+      <p class="eyebrow" id="vote-name"></p>
+      <h2 id="vote-heading"></h2>
+      <p class="lede" id="vote-lede"></p>
+    </div>
+    <div class="stack-8" id="vote-options"></div>
+    <div id="vote-seal" class="hidden"></div>
+    <button class="btn btn-primary" id="btn-confirm-vote" disabled>投票を確定</button>
+  </section>
+
+  <!-- ============ RESULTS ============ -->
+  <section id="s-results" class="screen stack-28 hidden">
+    <div>
+      <p class="eyebrow">Result</p>
+      <h2 id="result-heading"></h2>
+    </div>
+
+    <div class="stage" id="st-drum">
+      <div class="card drumroll">
+        <p class="drum-label">共有されていたキーワード</p>
+        <p class="drum-word" id="drum-word">？？？</p>
+      </div>
+    </div>
+
+    <div class="stage" id="st-identity">
+      <p class="section-title">正体</p>
+      <div class="card"><div class="badge-row chip-row" id="identity-row"></div></div>
+    </div>
+
+    <div class="stage" id="st-verdict">
+      <div class="verdict" id="verdict">
+        <p class="verdict-kicker" id="verdict-kicker"></p>
+        <p class="verdict-title" id="verdict-title"></p>
+        <p class="verdict-sub" id="verdict-sub"></p>
+      </div>
+    </div>
+
+    <div class="stage" id="st-notes">
+      <p class="section-title">得点内訳</p>
+      <div class="card"><p class="outcome" id="outcome-text"></p></div>
+    </div>
+
+    <div class="stage" id="st-score">
+      <p class="section-title" id="score-title">スコア</p>
+      <div class="card" id="score-board"></div>
+    </div>
+
+    <p class="skip-hint" id="skip-hint">画面をタップですべて表示</p>
+
+    <div class="stage" id="st-breakdown">
+      <p class="section-title">投票の内訳</p>
+      <div class="card" id="vote-breakdown"></div>
+    </div>
+
+    <div class="stage" id="st-log">
+      <p class="section-title">ログ</p>
+      <div class="card" id="log-result"></div>
+    </div>
+
+    <div class="stage" id="st-actions">
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-next-round">次のラウンド</button>
+        <button class="btn btn-quiet" id="btn-reset">最初から</button>
+      </div>
+      <div style="margin-top:10px; text-align:center">
+        <button type="button" class="btn-mini" id="btn-share">結果をコピー</button><textarea id="copy-result" class="hidden" readonly aria-label="共有用の結果" style="width:100%;min-height:140px;margin-top:12px"></textarea>
+      </div>
+    </div>
+
+    <div class="stage" id="st-rules">
+      <p class="section-title">ルール</p>
+      <div class="card">
+        <ul class="rules">
+          <p class="rules-head">進行</p>
+          <li>スパイだけが同じキーワードを共有。ほかはキーワードなし。</li>
+          <li id="rule-rounds"></li>
+          <li>入力順はゲームごとにシャッフル。同じゲーム内のラウンドは同じ順番。</li>
+          <li>最後に全員が投票。スパイは相棒1人、非スパイはスパイ候補を選ぶ。</li>
+          <p class="rules-head">得点</p>
+          <li>見破り成功：指名した2人が両方スパイだった非スパイ ＋2点</li>
+          <li>スパイ成功：誰にも見破られず、スパイ全員が別のスパイ1人を当てた ＋2点</li>
+          <li>通信失敗：スパイが相棒を当てられなかった場合、非スパイ全員 ＋1点</li>
+          <li>7〜8人ではスパイは3人。非スパイはそのうち2人を指名すれば見破り成功。</li>
+          <li>スパイの誰か1人でも非スパイに投票したら通信失敗。見破り成功と通信失敗の得点は加算され、該当者は ＋3点。</li>
+          <li id="rule-win"></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="confirm-layer" class="confirm-layer hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+  <div class="card confirm-card">
+    <h2 id="confirm-title">確認</h2>
+    <p id="confirm-message" class="lede"></p>
+    <div class="stack-10" style="margin-top:24px">
+      <button type="button" class="btn btn-primary" id="confirm-yes">続ける</button>
+      <button type="button" class="btn btn-quiet" id="confirm-no">キャンセル</button>
+    </div>
+  </div>
+</div>
+<noscript><p style="padding:24px">このプレビューではゲームを実行できません。JavaScriptが有効なブラウザでHTMLを開いてください。</p></noscript>
+<script>
+const KEYWORDS = [
+  "りんご","バナナ","いちご","スイカ","メロン","桃","ぶどう","みかん","チョコレート","アイスクリーム",
+  "ラーメン","寿司","ピザ","カレー","焼肉","たこ焼き","餃子","パスタ","天ぷら","お好み焼き",
+  "コーヒー","緑茶","ビール","バーベキュー","焼き鳥","唐揚げ","ハンバーガー","パン","おにぎり","チーズ",
+  "たい焼き","わらび餅","プリン","ケーキ","ポテチ","枝豆","刺身","しゃぶしゃぶ","もつ鍋","冷やし中華",
+  "抹茶","みたらし団子","かき氷","肉まん","クレープ","タピオカ","ラムネ","綿あめ","焼きそば","串カツ",
+  "シュークリーム","マカロン","ティラミス","パフェ","もんじゃ焼き","冷麺","フォー","タコス","ブリトー","春巻き",
+  "犬","猫","うさぎ","パンダ","ライオン","ペンギン","キリン","ゾウ","カメ","タコ",
+  "鷹","フクロウ","サメ","クジラ","チーター","コアラ","カンガルー","ハムスター","カラス","イルカ",
+  "トラ","ゴリラ","サル","ヒョウ","クマ","シカ","キツネ","オオカミ","ヘビ","カエル",
+  "アルパカ","カピバラ","ナマケモノ","フラミンゴ","カメレオン","アルマジロ","ウーパールーパー","ミーアキャット",
+  "海","山","砂漠","森","川","湖","滝","火山","島","洞窟",
+  "東京タワー","富士山","沖縄","北海道","京都","温泉","テーマパーク","水族館","動物園","遊園地",
+  "図書館","神社","お城","商店街","地下街","屋上","廃墟","灯台","展望台","秘密基地",
+  "渋谷","新宿","秋葉原","浅草","原宿","銀座","六本木","梅田","難波","すすきの",
+  "プラネタリウム","スケートリンク","ボウリング場","カラオケ","脱出ゲーム","ゲームセンター","映画館","銭湯","サウナ","屋台",
+  "新幹線","飛行機","自動車","船","自転車","バイク","ロケット","バス","ヘリコプター","潜水艦",
+  "サッカー","野球","テニス","バスケ","水泳","スキー","ゴルフ","相撲","ボードゲーム","マラソン",
+  "釣り","登山","キャンプ","ダンス","料理","写真","読書","旅行","映画","音楽",
+  "将棋","囲碁","麻雀","ポーカー","サイクリング","ボルダリング","スケボー","サーフィン","格闘技","弓道",
+  "バレーボール","ラグビー","卓球","バドミントン","フェンシング","柔道","カーリング","トライアスロン",
+  "桜","花火","紅葉","雪だるま","台風","虹","雷","霧","夕焼け","星空",
+  "オーロラ","流れ星","日食","月食","梅雨","猛暑","初雪","朝霧","春一番","満月",
+  "竹林","ひまわり畑","ラベンダー畑","棚田","珊瑚礁","鍾乳洞","砂丘","氷河",
+  "スマホ","パソコン","テレビ","冷蔵庫","傘","眼鏡","財布","鍵","時計","カメラ",
+  "ベッド","本棚","鏡","ソファ","ランプ","ゲーム機","掃除機","エアコン","炊飯器","洗濯機",
+  "夢","秘密","宝物","冒険","記憶","嘘","奇跡","孤独","自由","平和",
+  "怒り","恋","別れ","再会","驚き","後悔","期待","絶望","希望","感謝",
+  "デジャブ","金縛り","寝坊","迷子","サプライズ","停電","渋滞","満員電車","徹夜","二日酔い",
+  "医者","警察","料理人","先生","宇宙飛行士","探偵","魔法使い","海賊","忍者","サムライ",
+  "科学者","芸術家","音楽家","俳優","漫画家","プログラマー","農家","漁師","大工","消防士",
+  "ゾンビ","吸血鬼","宇宙人","ロボット","ドラゴン","妖精","幽霊","巨人","魔王","勇者",
+  "宇宙船","タイムマシン","透明マント","魔法の杖","テレパシー","瞬間移動","不老不死","変身","空を飛ぶ",
+  "赤","青","金色","虹色","ハート","星形","螺旋","迷路","透明","闇"
+];
+
+const NAME_POOL = ["アオイ","ハル","ミナト","ソラ","リン","ナギ","ユウ","コハク","ツバサ","シオン"];
+const SAVE_KEY = "linq-save-v1";
+const BUILD = "1.0.0-rc.3";
+let storageOK = true;
+const store = {
+ getItem(k){ try { return localStorage.getItem(k); } catch(e){ storageOK=false; return null; } },
+ setItem(k,v){ try { localStorage.setItem(k,String(v)); } catch(e){ storageOK=false; } },
+ removeItem(k){ try { localStorage.removeItem(k); } catch(e){ storageOK=false; } }
+};
+
+let ROUNDS = Number(store.getItem("linq-rounds") || 2);
+let WIN_SCORE = Number(store.getItem("linq-win") || 3);
+if (![1,2,3].includes(ROUNDS)) ROUNDS=2;
+if (![3,4,5].includes(WIN_SCORE)) WIN_SCORE=3;
+
+const state = {
+  count: 0,
+  players: [],
+  scores: [],
+  gameNo: 0,
+  spies: [],
+  keyword: "",
+  revealed: new Set(),
+  round: 1,
+  turn: 0,
+  order: [],
+  log: [],          // { round, player, word }
+  votes: {},        // playerIndex -> [targetIndex]
+  voted: new Set(),
+  activeVoter: null,
+  draftVote: [],
+  wordDraft: "",
+  voteOrder: [],
+  lastDelta: null,
+  screen: "s-setup"
+};
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const initials = (name) => name.trim().slice(0,2) || "?";
+// 表記ゆれ（全角半角・大文字小文字・空白）を吸収した重複判定用
+const norm = (s) => String(s).normalize("NFKC").replace(/[\s\u3000]/g, "").toLowerCase();
+const spyCountFor = (n) => (n >= 7 ? 3 : 2);
+
+/* ================= sound (WebAudio only / no assets) ================= */
+const ICON_ON = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 9v6h3l5 4V5L7 9H4z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+const ICON_OFF = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 9v6h3l5 4V5L7 9H4z" fill="currentColor"/><path d="M16 9l5 6M21 9l-5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+
+const audio = {
+  ctx: null,
+  on: (store.getItem("linq-sound") !== "off"),
+  ready(){
+    if (!this.on || privatePhase() || silentEffects || document.hidden) return null;
+    if (!this.ctx){
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      try { this.ctx = new AC(); } catch(e){ return null; }
+      this.bus = this.ctx.createGain();
+      this.bus.gain.value = .9;
+      this.bus.connect(this.ctx.destination);
+    }
+    if (this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
+    this.bus.gain.value=.9;
+    return this.ctx;
+  },
+  tone({ f = 440, to = null, dur = .18, type = "sine", gain = .18, delay = 0 }){
+    const ctx = this.ready(); if (!ctx) return;
+    const t = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(f, t);
+    if (to) osc.frequency.exponentialRampToValueAtTime(Math.max(30, to), t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(gain, t + 0.014);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(g).connect(this.bus);
+    osc.start(t); osc.stop(t + dur + .03);
+  },
+  noise({ dur = .12, gain = .12, cutoff = 2200, delay = 0, sweepTo = null }){
+    const ctx = this.ready(); if (!ctx) return;
+    const t = ctx.currentTime + delay;
+    const len = Math.max(1, Math.floor(ctx.sampleRate * dur));
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const filt = ctx.createBiquadFilter(); filt.type = "lowpass";
+    filt.frequency.setValueAtTime(cutoff, t);
+    if (sweepTo) filt.frequency.exponentialRampToValueAtTime(sweepTo, t + dur);
+    const g = ctx.createGain(); g.gain.value = gain;
+    src.connect(filt).connect(g).connect(this.bus);
+    src.start(t);
+  },
+  chord(freqs, { dur = .9, type = "triangle", gain = .12, spread = .05 } = {}){
+    freqs.forEach((f, i) => this.tone({ f, dur, type, gain, delay: i * spread }));
+  }
+};
+
+function buzz(pattern){
+  if (!audio.on || privatePhase() || silentEffects || document.hidden) return;
+  if (navigator.vibrate){ try { navigator.vibrate(pattern); } catch(e){} }
+}
+
+const sfx = {
+  tap(){ audio.tone({ f: 640, to: 540, dur: .06, type: "triangle", gain: .055 }); },
+  confirm(){ audio.tone({ f: 587.33, dur: .09, type: "triangle", gain: .11 });
+             audio.tone({ f: 880, dur: .14, type: "triangle", gain: .09, delay: .07 }); buzz(12); },
+  error(){ audio.tone({ f: 210, to: 150, dur: .24, type: "sawtooth", gain: .09 }); buzz([22,40,22]); },
+  flip(){ audio.noise({ dur: .34, gain: .09, cutoff: 5600, sweepTo: 420 }); },
+  /* 役割確認は「必ず」この共通音のみ。スパイ／非スパイで音・振動を変えると
+     周囲に聞かれた瞬間に役割が判明するため、絶対に分岐させないこと。 */
+  card(){ audio.tone({ f: 329.63, dur: .5, type: "triangle", gain: .05 });
+          audio.tone({ f: 246.94, dur: .62, type: "sine", gain: .045, delay: .05 });
+          audio.noise({ dur: .3, gain: .03, cutoff: 1500 }); buzz(18); },
+  roll(){ audio.noise({ dur: .05, gain: .05, cutoff: 3000 }); },
+  pop(){ audio.tone({ f: 440, to: 1318.5, dur: .24, type: "triangle", gain: .15 });
+         audio.tone({ f: 110, dur: .32, type: "sine", gain: .11 }); buzz(20); },
+  chip(){ audio.tone({ f: 932, dur: .055, type: "triangle", gain: .06 }); },
+  stingSpy(){ audio.chord([146.83, 174.61, 233.08], { dur: 1.4, type: "sawtooth", gain: .065, spread: .09 });
+              audio.noise({ dur: .9, gain: .06, cutoff: 640 }); buzz([40, 50, 120]); },
+  stingCiv(){ audio.chord([261.63, 329.63, 392, 523.25], { dur: 1.3, type: "triangle", gain: .065, spread: .07 }); buzz(30); },
+  stingNone(){ audio.tone({ f: 174.61, to: 116, dur: .9, type: "sine", gain: .095 }); buzz(40); },
+  tick(){ audio.tone({ f: 1244.5, dur: .04, type: "square", gain: .035 }); },
+  win(){ [523.25, 659.25, 783.99, 1046.5].forEach((f, i) =>
+           audio.tone({ f, dur: .55, type: "triangle", gain: .11, delay: i * .11 }));
+         audio.tone({ f: 130.81, dur: .9, type: "sine", gain: .09, delay: .33 });
+         audio.noise({ dur: .5, gain: .05, cutoff: 6500, delay: .44 }); buzz([20, 40, 20, 40, 60]); }
+};
+
+function privatePhase(){ return ["s-reveal-list","s-reveal-card","s-vote-list","s-vote-card"].includes(state.screen); }
+let silentEffects = false;
+function paintSoundBtn(){
+  $("btn-sound").innerHTML = audio.on ? ICON_ON : ICON_OFF;
+  $("btn-sound").setAttribute("aria-pressed", String(audio.on));
+}
+function toggleSound(){
+  audio.on = !audio.on;
+  store.setItem("linq-sound", audio.on ? "on" : "off");
+  paintSoundBtn();
+  if (audio.on) sfx.confirm(); else stopAudio();
+}
+
+/* ================= navigation ================= */
+const RAIL_STEP = {
+  "s-setup": 0, "s-reveal-list": 1, "s-reveal-card": 1,
+  "s-round": 2, "s-vote-list": 3, "s-vote-card": 3, "s-results": 4
+};
+
+function paintRail(){
+  const step = RAIL_STEP[state.screen] || 0;
+  $("rail").querySelectorAll(".rail-seg").forEach(seg => {
+    const n = Number(seg.dataset.step);
+    seg.dataset.state = n < step ? "done" : (n === step ? "active" : "todo");
+  });
+}
+
+function show(id, step){
+  if (state.screen === "s-results" && id !== "s-results") cancelStages();
+  if (id !== "s-reveal-card") { $("reveal-slot").replaceChildren(); $("reveal-actions").replaceChildren(); }
+  if (id !== "s-vote-card") { $("vote-options").replaceChildren(); $("vote-seal").replaceChildren(); $("vote-heading").textContent="投票"; $("vote-lede").textContent=""; }
+  document.activeElement?.blur();
+  document.querySelectorAll(".screen").forEach(s => s.classList.add("hidden"));
+  const el = $(id);
+  el.classList.remove("hidden");
+  el.classList.remove("screen-in");
+  void el.offsetWidth;
+  el.classList.add("screen-in");
+  $("step-label").textContent = step || "";
+  state.screen = id;
+  $("btn-back").classList.toggle("hidden", id === "s-setup");
+  paintRail();
+  if (privatePhase()) stopAudio();
+  window.scrollTo(0, 0);
+  saveGame();
+}
+
+/* ================= persistence ================= */
+function saveGame(){
+  try {
+    if (state.screen === "s-setup" || !state.players.length){ return; }
+    store.setItem(SAVE_KEY, JSON.stringify({
+      v: 2, at: Date.now(), rounds: ROUNDS, win: WIN_SCORE,
+      state: Object.assign({}, state, {
+        revealed: Array.from(state.revealed),
+        voted: Array.from(state.voted)
+      })
+    }));
+  } catch(e){ storageOK=false; }
+  paintStorage();
+}
+function validateSave(d){
+ try {
+  if (!d || ![1,2].includes(d.v) || ![1,2,3].includes(d.rounds) || ![3,4,5].includes(d.win)) return false;
+  const t=d.state, n=t.players.length, index=i=>Number.isInteger(i)&&i>=0&&i<n;
+  const unique=a=>Array.isArray(a)&&a.every(index)&&new Set(a).size===a.length;
+  if (n<4||n>8||t.count!==n||!t.players.every(x=>typeof x==='string'&&x.length>0&&x.length<=10)||new Set(t.players.map(norm)).size!==n) return false;
+  if (!Array.isArray(t.scores)||t.scores.length!==n||!t.scores.every(x=>Number.isInteger(x)&&x>=0)) return false;
+  if (!Number.isInteger(t.gameNo)||t.gameNo<1||!KEYWORDS.includes(t.keyword)) return false;
+  if (!unique(t.order)||t.order.length!==n||!unique(t.spies)||t.spies.length!==spyCountFor(n)||!unique(t.revealed)||!unique(t.voted)||!unique(t.voteOrder)) return false;
+  if (t.voteOrder.length!==t.voted.length||!t.voteOrder.every(i=>t.voted.includes(i))) return false;
+  if (!Array.isArray(t.log)||t.log.length>n*d.rounds||!Number.isInteger(t.round)||t.round<1||t.round>d.rounds||!Number.isInteger(t.turn)||t.turn<0||t.turn>n) return false;
+  const words=new Set();
+  for(let j=0;j<t.log.length;j++){
+   const e=t.log[j]; if(e.player!==t.order[j%n]||e.round!==Math.floor(j/n)+1||typeof e.word!=='string'||!norm(e.word)||e.word.length>14||words.has(norm(e.word))) return false;
+   words.add(norm(e.word));
+  }
+  if (!t.votes||Object.keys(t.votes).length!==t.voted.length) return false;
+  for (const i of t.voted) if(!validVote(t,i,t.votes[i])) return false;
+  const phase=t.screen;
+  if (!Object.keys(RAIL_STEP).includes(phase)||phase==='s-setup') return false;
+  if (phase.startsWith('s-reveal')&&(t.log.length||t.voted.length)) return false;
+  if (phase==='s-round'&&(t.turn>=n||t.log.length!==(t.round-1)*n+t.turn||t.voted.length||t.revealed.length!==n)) return false;
+  if ((phase.startsWith('s-vote')||phase==='s-results')&&(t.log.length!==n*d.rounds||t.revealed.length!==n)) return false;
+  if (t.wordDraft!=null&&(typeof t.wordDraft!=='string'||t.wordDraft.length>14)) return false;
+  if (phase==='s-results') {
+   if(t.voted.length!==n||!Array.isArray(t.lastDelta)||t.lastDelta.length!==n) return false;
+   const expected=evaluateRound(t).delta;
+   if(!expected.every((v,i)=>v===t.lastDelta[i]&&t.scores[i]>=v)) return false;
+  } else if (t.lastDelta!=null) return false;
+  return true;
+ } catch(e){ return false; }
+}
+function loadSave(){
+ const raw=store.getItem(SAVE_KEY);
+ if(!raw) return null;
+ try { const d=JSON.parse(raw); if(validateSave(d)) return d; } catch(e){}
+ const msg=$("save-warning"); if(msg){msg.textContent="保存データを読み込めません。破損または旧版との不整合があります。新しいゲームを開始してください。";msg.classList.remove("hidden");}
+ return null;
+}
+
+function clearSave(){ try { store.removeItem(SAVE_KEY); } catch(e){} }
+
+function paintResume(){
+  const s = loadSave();
+  const card = $("resume-card");
+  if (!s || !s.state || !s.state.players || !s.state.players.length){
+    card.classList.add("hidden"); return;
+  }
+  const label = { "s-reveal-list":"役割確認", "s-reveal-card":"役割確認", "s-round":"連想ワード",
+                  "s-vote-list":"投票", "s-vote-card":"投票", "s-results":"結果" }[s.state.screen] || "進行中";
+  $("resume-title").textContent = s.state.players.join("・");
+  $("resume-meta").textContent = "Game " + s.state.gameNo + " ／ " + label + " から再開できます";
+  card.classList.remove("hidden");
+}
+
+function resumeGame(){
+  const s = loadSave();
+  if (!s || !s.state) return;
+  ROUNDS = s.rounds || ROUNDS;
+  WIN_SCORE = s.win || WIN_SCORE;
+  Object.assign(state, s.state, {
+    revealed: new Set(s.state.revealed || []),
+    voted: new Set(s.state.voted || [])
+  });
+  state.count = state.players.length;
+  state.wordDraft = state.wordDraft || "";
+  paintRules();
+  switch (s.state.screen){
+    case "s-round": renderRound(); break;
+    case "s-vote-list":
+    case "s-vote-card": renderVoteList(); break;
+    case "s-results": renderResults(); flushStages(); break;
+    default: renderRevealList();
+  }
+}
+
+/* ================= back navigation ================= */
+function backToSetup(){
+  const names = state.players.slice();
+  buildSetup();
+  if (state.count){
+    selectCount(state.count);
+    Array.from(document.querySelectorAll("#name-fields input")).forEach((inp, i) => {
+      if (names[i]) inp.value = names[i];
+    });
+  } else {
+    $("btn-start").disabled = true;
+  }
+  show("s-setup", "Setup");
+}
+
+function backToLastWord(){
+  const last = state.log.pop();
+  if (!last){
+    state.wordDraft="";
+    state.revealed = new Set();
+    renderRevealList();
+    return;
+  }
+  state.round = last.round;
+  state.turn = Math.max(0, state.order.indexOf(last.player));
+  state.wordDraft=last.word;
+  renderRound();
+}
+
+function goBack(confirmed=false){
+  if (["s-results","s-round","s-vote-list"].includes(state.screen) && confirmed!==true){
+    askConfirmation("直前の記録を取り消して戻りますか？ 端末を直前のプレイヤーへ渡してください。",()=>goBack(true),"取り消して戻る");return;
+  }
+  cancelStages();
+  switch (state.screen){
+    case "s-reveal-list": backToSetup(); break;
+    case "s-reveal-card": renderRevealList(); break;
+    case "s-round": backToLastWord(); break;
+    case "s-vote-list":
+      if (state.voteOrder.length){
+        const v = state.voteOrder.pop();
+        state.voted.delete(v);
+        delete state.votes[v];
+        renderVoteList();
+      } else {
+        backToLastWord();
+      }
+      break;
+    case "s-vote-card": renderVoteList(); break;
+    case "s-results": {
+      if (state.lastDelta){
+        state.lastDelta.forEach((d, i) => { state.scores[i] -= d; });
+        state.lastDelta = null;
+      }
+      const cv = document.getElementById("confetti");
+      if (cv) cv.remove();
+      const v = state.voteOrder.pop();
+      if (v != null){ state.voted.delete(v); delete state.votes[v]; }
+      renderVoteList();
+      break;
+    }
+    default: backToSetup();
+  }
+}
+
+/* ================= setup ================= */
+function paintRules(){
+  $("rule-rounds").textContent = ROUNDS + "ラウンド、全員が連想ワードを1つずつ入力（同じワードの再利用はNG）。";
+  $("rule-win").textContent = "ゲーム終了時に" + WIN_SCORE + "点以上なら優勝。同時到達は同時優勝。新しい対戦は全員0点から。";
+  $("setup-rules").innerHTML=document.querySelector("#st-rules .rules").innerHTML.replace(/ id="[^"]*"/g, "");
+  $("score-title").textContent = "スコア（" + WIN_SCORE + "点先取）";
+}
+
+function buildSetup(){
+  $("count-row").innerHTML = [4,5,6,7,8].map(n =>
+    '<button type="button" aria-pressed="false" data-n="'+n+'">'+n+'</button>'
+  ).join("");
+  $("count-row").querySelectorAll("button").forEach(b => {
+    b.addEventListener("click", () => selectCount(Number(b.dataset.n)));
+  });
+
+  $("rounds-row").innerHTML = [1,2,3].map(n =>
+    '<button type="button" aria-pressed="'+(n === ROUNDS)+'" data-r="'+n+'">'+n+'</button>'
+  ).join("");
+  $("rounds-row").querySelectorAll("button").forEach(b => {
+    b.addEventListener("click", () => {
+      ROUNDS = Number(b.dataset.r);
+      store.setItem("linq-rounds", ROUNDS);
+      $("rounds-row").querySelectorAll("button").forEach(x =>
+        x.setAttribute("aria-pressed", String(Number(x.dataset.r) === ROUNDS)));
+      paintRules();
+    });
+  });
+
+  $("win-row").innerHTML = [3,4,5].map(n =>
+    '<button type="button" aria-pressed="'+(n === WIN_SCORE)+'" data-w="'+n+'">'+n+'</button>'
+  ).join("");
+  $("win-row").querySelectorAll("button").forEach(b => {
+    b.addEventListener("click", () => {
+      WIN_SCORE = Number(b.dataset.w);
+      store.setItem("linq-win", WIN_SCORE);
+      $("win-row").querySelectorAll("button").forEach(x =>
+        x.setAttribute("aria-pressed", String(Number(x.dataset.w) === WIN_SCORE)));
+      paintRules();
+    });
+  });
+
+  $("name-fields").innerHTML = '<p class="hint">人数を選ぶと名前欄が表示されます。</p>';
+  $("btn-autoname").classList.add("hidden");
+  paintRules();
+  paintResume();
+}
+
+function selectCount(n){
+  if(![4,5,6,7,8].includes(n)) return;
+  state.count = n;
+  $("count-row").querySelectorAll("button").forEach(b => {
+    b.setAttribute("aria-pressed", String(Number(b.dataset.n) === n));
+  });
+  $("spy-hint").textContent = n + "人プレイ ／ スパイ " + spyCountFor(n) + "人";
+  const prev = Array.from(document.querySelectorAll("#name-fields input")).map(i => i.value);
+  $("name-fields").innerHTML = Array.from({length:n}, (_, i) =>
+    '<div class="field"><span class="field-tag">P'+(i+1)+'</span>' +
+    '<input type="text" aria-label="プレイヤー'+(i+1)+'の名前" maxlength="10" placeholder="プレイヤー'+(i+1)+'" value="'+esc(prev[i] || "")+'" autocomplete="off"></div>'
+  ).join("");
+  $("btn-autoname").classList.remove("hidden");
+  $("btn-start").disabled = false;
+}
+
+function autoName(){
+  const pool = shuffled(NAME_POOL);
+  Array.from(document.querySelectorAll("#name-fields input")).forEach((inp, i) => {
+    inp.value = pool[i % pool.length];
+  });
+}
+
+/* ================= game flow ================= */
+function startGame(confirmed=false){
+  if(state.screen!=="s-setup") return;
+  const inputs = Array.from(document.querySelectorAll("#name-fields input"));
+  const names=inputs.map((inp,i)=>inp.value.trim()||("プレイヤー"+(i+1)));
+  if(names.length<4||names.length>8||names.some(x=>x.length>10)||new Set(names.map(norm)).size!==names.length){
+   $("setup-error").textContent="4〜8人で、区別できる名前を入力してください。同じ名前は使えません。";$("setup-error").classList.remove("hidden");return;
+  }
+  if(loadSave()&&confirmed!==true){
+    askConfirmation("保存中のゲームがあります。破棄して新しいゲームを開始しますか？",()=>startGame(true),"新しく開始する");return;
+  }
+  $("setup-error").classList.add("hidden");
+  state.players = names;
+  state.scores = state.players.map(() => 0);
+  state.gameNo = 0;
+  state.order = [];
+  clearSave();
+  newRound();
+}
+
+function shuffled(arr){
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function newRound(){
+  if (state.screen!=="s-results" && !(state.screen==="s-setup" && state.gameNo===0)) return;
+  cancelStages();
+  if(state.scores.some(x=>x>=WIN_SCORE)){state.scores.fill(0);state.gameNo=0;state.order=[];}
+  const prevFirst = state.order.length ? state.order[0] : null;
+  state.gameNo += 1;
+  const n = state.players.length;
+  const spyCount = spyCountFor(n);
+  const base = state.players.map((_, i) => i);
+  if (state.gameNo === 1){
+    state.order = base;
+  } else {
+    let next = shuffled(base);
+    let guard = 0;
+    if(next[0]===prevFirst){const j=1+Math.floor(Math.random()*(n-1));[next[0],next[j]]=[next[j],next[0]];}
+    state.order = next;
+  }
+  state.keyword = KEYWORDS[Math.floor(Math.random() * KEYWORDS.length)];
+  state.spies = shuffled(base).slice(0, spyCount).sort((a,b) => a-b);
+  state.revealed = new Set();
+  state.round = 1;
+  state.turn = 0;
+  state.log = [];
+  state.wordDraft = "";
+  state.votes = {};
+  state.voted = new Set();
+  state.voteOrder = [];
+  state.lastDelta = null;
+  renderRevealList();
+}
+
+/* ================= reveal ================= */
+function renderRevealList(){
+  $("reveal-list").innerHTML = state.players.map((name, i) => {
+    const done = state.revealed.has(i);
+    return '<button type="button" class="row button '+(done ? "done" : "")+'" data-i="'+i+'" '+(done ? "disabled" : "")+'>' +
+      '<span class="avatar">'+esc(initials(name))+'</span>' +
+      '<span class="row-main"><span class="row-name">'+esc(name)+'</span>' +
+      '<span class="row-meta '+(done ? "ok" : "")+'">'+(done ? "確認済み" : "タップして確認")+'</span></span>' +
+      '<span class="chev">'+(done ? "✓" : "›")+'</span></button>';
+  }).join("");
+  $("reveal-list").querySelectorAll("button[data-i]").forEach(b => {
+    b.addEventListener("click", () => openReveal(Number(b.dataset.i)));
+  });
+  show("s-reveal-list", "Game " + state.gameNo + " · 1/3");
+}
+
+function openReveal(idx){
+  if(!Number.isInteger(idx)||idx<0||idx>=state.count||state.revealed.has(idx)) return;
+  if(!["s-reveal-list","s-reveal-card"].includes(state.screen)) return;
+  $("reveal-name").textContent = state.players[idx];
+  const isSpy = state.spies.includes(idx);
+  $("reveal-slot").innerHTML =
+    '<button type="button" class="cover" id="cover">' +
+      '<div class="seal"><svg width="22" height="22" viewBox="0 0 24 24" fill="none">' +
+        '<rect x="5" y="10" width="14" height="10" rx="2.5" stroke="currentColor" stroke-width="1.8"/>' +
+        '<path d="M8.5 10V7.5a3.5 3.5 0 017 0V10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+      '</svg></div>' +
+      '<p class="cover-text">タップしてカードを表示</p>' +
+      '<p class="cover-sub">' + esc(state.players[idx]) + ' さん専用</p>' +
+    '</button>';
+  $("reveal-actions").innerHTML = '';
+  $("cover").addEventListener("click", () => {
+    // Secret screens are silent and non-vibrating.
+    $("reveal-slot").innerHTML = isSpy
+      ? '<div class="role"><p class="role-label">Your card</p><p class="role-keyword">'+esc(state.keyword)+'</p>' +
+        '<p class="role-note">あなたはスパイ。相棒も同じキーワードを持っています。</p>' +
+        '<span class="badge role-rule">相棒とバレずに繋がる</span></div>'
+      : '<div class="role"><p class="role-label">Your card</p><p class="role-keyword">キーワードなし</p>' +
+        '<p class="role-note">あなたは非スパイ。それらしい言葉でごまかしながらスパイを探しましょう。</p>' +
+        '<span class="badge role-rule">スパイを2人見抜く</span></div>';
+    $("reveal-actions").innerHTML = '<button class="btn btn-primary" id="btn-hide">確認した — 次の人へ</button>';
+    const card = $("reveal-slot").firstElementChild;
+    // 音・振動・アニメーションは役割によらず完全に同一
+    // No flash, shake, sound or haptic cue on private cards.
+    $("btn-hide").addEventListener("click", () => {
+      state.revealed.add(idx);
+      if (state.revealed.size === state.players.length){
+        state.round = 1; state.turn = 0;
+        renderRound();
+      } else {
+        renderRevealList();
+      }
+    });
+  }, { once:true });
+  show("s-reveal-card", "Game " + state.gameNo + " · 1/3");
+}
+
+/* ================= rounds ================= */
+function logHtml(){
+  if (!state.log.length) return '<p class="empty">まだ記録がありません。</p>';
+  let html = "";
+  for (let r = 1; r <= ROUNDS; r++){
+    const items = state.log.filter(e => e.round === r);
+    if (!items.length) continue;
+    html += '<div style="margin-top:'+(r === 1 ? "0" : "18px")+'">' +
+      '<p class="log-round">Round '+r+'</p>' +
+      items.map(e =>
+        '<div class="log-item"><span class="log-name">'+esc(state.players[e.player])+'</span>' +
+        '<span class="log-word">'+esc(e.word)+'</span></div>'
+      ).join("") + '</div>';
+  }
+  return html;
+}
+
+function currentTurnPlayer(){ return state.order[state.turn]; }
+
+function renderRound(){
+  const pIdx = currentTurnPlayer();
+  const player = state.players[pIdx];
+  $("round-eyebrow").textContent = "Step 2 — 連想ワード";
+  $("round-heading").textContent = "Round " + state.round + " / " + ROUNDS;
+  $("round-lede").textContent = state.round === 1
+    ? "順番に端末を回して、キーワードから連想する言葉を1つ入力。入力すると全員に公開されます。"
+    : "すでに出た言葉は使えません。矛盾させて撹乱するのもアリ。";
+  $("turn-avatar").textContent = initials(player);
+  $("turn-label").textContent = player + " さんの番";
+  $("turn-meta").textContent = (state.turn + 1) + " / " + state.players.length + "  ·  ROUND " + state.round;
+  $("order-hint").innerHTML = state.order.map((p, i) => {
+    const cls = i < state.turn ? "done" : (i === state.turn ? "now" : "");
+    return '<span class="order-chip '+cls+'">'+esc(state.players[p])+'</span>';
+  }).join("");
+  $("word-input").value = state.wordDraft || "";
+  $("word-input").placeholder = player + " の連想ワード";
+  $("word-error").classList.add("hidden");
+  $("log").innerHTML = logHtml();
+  show("s-round", "Game " + state.gameNo + " · 2/3");
+  $("word-input").blur();
+}
+
+let composing=false, compositionEnded=-Infinity;
+function submitWord(){
+  if(state.screen!=="s-round"||composing||performance.now()-compositionEnded<100) return;
+  const raw = $("word-input").value.trim();
+  const err = $("word-error");
+  if (!norm(raw)||raw.length>14){
+    err.textContent = "言葉を入力してください。"; err.classList.remove("hidden"); sfx.error(); return;
+  }
+  const used = state.log.some(e => norm(e.word) === norm(raw));
+  if (used){
+    err.textContent = "「" + raw + "」はすでに使われています。別の言葉にしてください。";
+    err.classList.remove("hidden"); sfx.error(); return;
+  }
+  sfx.confirm();
+  state.wordDraft="";
+  state.log.push({ round: state.round, player: currentTurnPlayer(), word: raw });
+  state.turn += 1;
+  if (state.turn >= state.players.length){
+    if (state.round < ROUNDS){ state.round += 1; state.turn = 0; renderRound(); }
+    else { renderVoteList(); }
+  } else {
+    renderRound();
+  }
+}
+
+/* ================= voting ================= */
+function renderVoteList(){
+  $("vote-list").innerHTML = state.players.map((name, i) => {
+    const done = state.voted.has(i);
+    return '<button type="button" class="row button '+(done ? "done" : "")+'" data-i="'+i+'" '+(done ? "disabled" : "")+'>' +
+      '<span class="avatar">'+esc(initials(name))+'</span>' +
+      '<span class="row-main"><span class="row-name">'+esc(name)+'</span>' +
+      '<span class="row-meta '+(done ? "ok" : "")+'">'+(done ? "投票済み" : "タップして投票")+'</span></span>' +
+      '<span class="chev">'+(done ? "✓" : "›")+'</span></button>';
+  }).join("");
+  $("vote-list").querySelectorAll("button[data-i]").forEach(b => {
+    b.addEventListener("click", () => openVote(Number(b.dataset.i)));
+  });
+  if(state.voted.size===state.count){
+   $("vote-list").innerHTML='<div class="card" style="grid-column:1 / -1"><p>全員の投票が完了しました。</p><p class="hint">端末を中央に置き、全員が見える状態で結果を開いてください。</p><button type="button" class="btn btn-primary" id="show-results" style="margin-top:16px">結果を発表</button></div>';
+   $("show-results").onclick=renderResults;
+  }
+  $("log-vote").innerHTML = logHtml();
+  show("s-vote-list", "Game " + state.gameNo + " · 3/3");
+}
+
+function picksNeeded(idx){
+  return state.spies.includes(idx) ? 1 : Math.min(2, state.spies.length);
+}
+
+function openVote(idx){
+  if(state.screen!=="s-vote-list"||!Number.isInteger(idx)||idx<0||idx>=state.count||state.voted.has(idx)) return;
+  state.activeVoter = idx;
+  state.draftVote = [];
+
+  $("vote-name").textContent=state.players[idx];
+  $("vote-heading").textContent="本人だけで確認";
+  $("vote-lede").textContent="周りに画面が見えない状態で開いてください。投票中は音・振動が出ません。";
+  $("vote-options").innerHTML='<button type="button" class="btn btn-secondary" id="open-ballot">投票画面を開く</button>';
+  $("vote-seal").replaceChildren();
+  $("btn-confirm-vote").classList.add("hidden");
+  $("open-ballot").onclick=()=>{
+   $("vote-heading").textContent=state.spies.includes(idx)?"相棒だと思う1人を選ぶ":"スパイだと思う2人を選ぶ";
+   $("vote-lede").textContent=state.spies.includes(idx)?"ほかのスパイ1人を指名してください。":"指名した2人がどちらもスパイなら ＋2点。7〜8人でも2人を選びます。";
+   $("btn-confirm-vote").classList.remove("hidden");
+   renderVoteOptions();
+  };
+  show("s-vote-card", "Game " + state.gameNo + " · 3/3");
+}
+
+function renderVoteOptions(){
+  const idx = state.activeVoter;
+  const need = picksNeeded(idx);
+  $("vote-options").innerHTML = state.players.map((name, i) => {
+    if (i === idx) return "";
+    const on = state.draftVote.includes(i);
+    return '<button type="button" class="pick" aria-pressed="'+on+'" data-i="'+i+'">' +
+      '<span class="mark">'+(on ? "✓" : "")+'</span>' +
+      '<span class="avatar">'+esc(initials(name))+'</span>' +
+      '<span class="row-main"><span class="row-name">'+esc(name)+'</span></span></button>';
+  }).join("");
+  $("vote-options").querySelectorAll("button[data-i]").forEach(b => {
+    b.addEventListener("click", () => {
+      const i = Number(b.dataset.i);
+      const pos = state.draftVote.indexOf(i);
+      if (pos >= 0) state.draftVote.splice(pos, 1);
+      else {
+        if (state.draftVote.length >= need) state.draftVote.shift();
+        state.draftVote.push(i);
+      }
+      renderVoteOptions();
+    });
+  });
+  $("btn-confirm-vote").disabled=state.draftVote.length!==need;
+  $("btn-confirm-vote").textContent=state.draftVote.length===need?"投票を確定":"あと"+(need-state.draftVote.length)+"人選ぶ";
+}
+
+function confirmVote(){
+  const idx = state.activeVoter;
+  if(state.screen!=="s-vote-card"||state.voted.has(idx)||!validVote(state,idx,state.draftVote)) return;
+  state.votes[idx] = state.draftVote.slice();
+  state.voted.add(idx);
+  state.voteOrder = state.voteOrder.filter(v => v !== idx);
+  state.voteOrder.push(idx);
+  sfx.confirm();
+  renderVoteList();
+}
+
+/* ================= stage runner / effects ================= */
+const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+let stageQueue = [], stageTimer = null, rollTimer = null;
+let fxEpoch=0;
+const pendingFx=new Set();
+function stopAudio(){
+ const ctx=audio.ctx;
+ if(audio.bus){audio.bus.gain.value=0;audio.bus.disconnect();}
+ audio.ctx=null;audio.bus=null;
+ if(ctx&&ctx.state!=="closed")ctx.close().catch(()=>{});
+}
+function effectLater(fn,ms){
+ if(silentEffects||reducedMotion()) return;
+ const epoch=fxEpoch; const id=setTimeout(()=>{pendingFx.delete(id);if(epoch===fxEpoch&&state.screen==="s-results") fn();},ms);pendingFx.add(id);
+}
+function cancelStages(){
+ fxEpoch++;
+ clearTimeout(stageTimer);clearInterval(rollTimer);stageTimer=null;rollTimer=null;stageQueue=[];
+ pendingFx.forEach(clearTimeout);pendingFx.clear();
+ $("confetti")?.remove();stopAudio();
+}
+
+
+function runStages(steps){
+  stageQueue = steps.slice();
+  $("skip-hint").classList.remove("hidden");
+  if (reducedMotion()){ flushStages(); return; }
+  nextStage();
+}
+function nextStage(){
+  if (stageTimer){ clearTimeout(stageTimer); stageTimer = null; }
+  const step = stageQueue.shift();
+  if (!step){ $("skip-hint").classList.add("hidden"); return; }
+  step.run();
+  stageTimer = setTimeout(nextStage, step.wait);
+}
+function flushStages(){
+ clearTimeout(stageTimer);clearInterval(rollTimer);stageTimer=null;rollTimer=null;
+ pendingFx.forEach(clearTimeout);pendingFx.clear();stopAudio();
+ silentEffects=true;
+ try {while(stageQueue.length) stageQueue.shift().run();} finally {silentEffects=false;}
+ $("skip-hint").classList.add("hidden");
+}
+
+function reveal(id){ const el = $(id); el.classList.add("in"); return el; }
+
+function countUp(el, from, to){
+  if (reducedMotion() || from === to){ el.textContent = to; return; }
+  const epoch=fxEpoch;
+  const t0 = performance.now(), dur = 750;
+  const tick = (now) => {
+    if(epoch!==fxEpoch||!el.isConnected) return;
+    const p = Math.min(1, (now - t0) / dur);
+    el.textContent = Math.round(from + (to - from) * p);
+    if (p < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+function confetti(){
+  if (reducedMotion()||silentEffects) return;
+  const old = document.getElementById("confetti");
+  if (old) old.remove();
+  const cv = document.createElement("canvas");
+  cv.id = "confetti";
+  document.body.appendChild(cv);
+  const ctx = cv.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W * dpr; cv.height = H * dpr; ctx.scale(dpr, dpr);
+  const colors = ["#C9A76A", "#E7CB96", "#F4F1EA", "#7FB08E"];
+  const bits = Array.from({ length: 110 }, () => ({
+    x: W / 2 + (Math.random() - .5) * W * .75,
+    y: H * .28 + Math.random() * 50,
+    vx: (Math.random() - .5) * 4.6,
+    vy: -Math.random() * 7.5 - 2,
+    w: 2.5 + Math.random() * 4,
+    h: 6 + Math.random() * 8,
+    rot: Math.random() * Math.PI,
+    vr: (Math.random() - .5) * .34,
+    c: colors[Math.floor(Math.random() * colors.length)]
+  }));
+  const t0 = performance.now();
+  const epoch=fxEpoch;
+  const frame = (now) => {
+    if(epoch!==fxEpoch||!cv.isConnected) return;
+    const t = now - t0;
+    ctx.clearRect(0, 0, W, H);
+    bits.forEach(b => {
+      b.vy += .16; b.x += b.vx; b.y += b.vy; b.rot += b.vr;
+      ctx.save();
+      ctx.translate(b.x, b.y); ctx.rotate(b.rot);
+      ctx.globalAlpha = Math.max(0, 1 - t / 2800);
+      ctx.fillStyle = b.c;
+      ctx.fillRect(-b.w / 2, -b.h / 2, b.w, b.h);
+      ctx.restore();
+    });
+    if (t < 2800) requestAnimationFrame(frame); else cv.remove();
+  };
+  requestAnimationFrame(frame);
+}
+
+/* ================= results ================= */
+let lastResultText = "";
+
+function validVote(t,i,v){
+ const n=t.players.length, need=t.spies.includes(i)?1:2;
+ return Number.isInteger(i)&&i>=0&&i<n&&Array.isArray(v)&&v.length===need&&new Set(v).size===need&&v.every(x=>Number.isInteger(x)&&x>=0&&x<n&&x!==i);
+}
+function evaluateRound(t){
+ if(!t.players.every((_,i)=>validVote(t,i,t.votes[i]))) throw new Error("投票が未完了です");
+ const spies=t.spies, spySet=new Set(spies), civilians=t.players.map((_,i)=>i).filter(i=>!spySet.has(i));
+ const busted=civilians.filter(i=>t.votes[i].every(j=>spySet.has(j)));
+ const exposed=busted.length>0;
+ const linked=spies.every(i=>spySet.has(t.votes[i][0]));
+ const delta=t.players.map((_,i)=>spySet.has(i)?(!exposed&&linked?2:0):(busted.includes(i)?2:0)+(!linked?1:0));
+ return {spies,spySet,civilians,busted,exposed,linked,delta};
+}
+function renderResults(){
+  if(state.voted.size!==state.count||!state.players.every((_,i)=>validVote(state,i,state.votes[i]))) return;
+  cancelStages();
+  const {spies,spySet,civilians,busted,exposed,linked,delta}=evaluateRound(state);
+  const prevScores=state.lastDelta?state.scores.map((x,i)=>x-state.lastDelta[i]):state.scores.slice();
+  const notes = [];
+
+
+  if (exposed) notes.push("<strong>見破り成功</strong>：" + busted.map(i => esc(state.players[i])).join("、") + " が ＋2点");
+
+  if (!exposed && linked){
+
+    notes.push("<strong>スパイ成功</strong>：誰にも見破られず、スパイ同士が繋がって ＋2点");
+  }
+  if (!linked){
+
+    notes.push("<strong>通信失敗</strong>：スパイが相棒を当てられず、非スパイ全員に ＋1点");
+  }
+  if (!notes.length) notes.push("今回は得点の動きなし。");
+
+  if(!state.lastDelta) delta.forEach((d, i) => { state.scores[i] += d; });
+  state.lastDelta = delta.slice();
+
+  const best = Math.max.apply(null, state.scores);
+  const winners = state.players.map((_, i) => i).filter(i => state.scores[i] >= WIN_SCORE);
+
+  let vClass = "", kicker = "", title = "", sub = "";
+  if (exposed){
+    vClass = "civ"; kicker = "CITIZENS"; title = "スパイ、発見。";
+    sub = busted.map(i => esc(state.players[i])).join("、") + " がスパイを見抜いた。";
+  } else if (linked){
+    vClass = "spy"; kicker = "SPIES"; title = "通信、成功。";
+    sub = "誰にも正体を見破られず、" + spies.map(i => esc(state.players[i])).join(" ⇄ ") + " が繋がった。";
+  } else {
+    kicker = "NO CONTACT"; title = "通信、失敗。";
+    sub = "スパイは相棒を見つけられなかった。非スパイ全員に ＋1点。";
+  }
+
+  $("copy-result").classList.add("hidden");$("btn-share").textContent="結果をコピー";
+  $("result-heading").textContent = "Game " + state.gameNo + " 結果";
+  $("drum-word").textContent = "？？？";
+  $("drum-word").classList.remove("pop");
+  $("outcome-text").innerHTML = notes.join("<br>");
+  $("vote-breakdown").innerHTML = state.players.map((name, i) => {
+    const targets = (state.votes[i] || []).map(t => esc(state.players[t])).join("、") || "—";
+    return '<div class="log-item"><span class="log-name">'+esc(name)+'</span>' +
+      '<span class="log-target">'+targets+'</span></div>';
+  }).join("");
+  $("log-result").innerHTML = logHtml();
+  $("btn-next-round").textContent = winners.length ? "新しい対戦（0点から）" : "次のゲーム";
+  paintRules();
+
+  const rank = state.players.map((_, i) => i).sort((a,b) => state.scores[b] - state.scores[a]);
+
+  lastResultText = [
+    "LINQ — Game " + state.gameNo,
+    "キーワード：" + state.keyword,
+    "スパイ：" + spies.map(i => state.players[i]).join("、"),
+    title,
+    "― スコア ―",
+    rank.map(i => state.players[i] + " " + state.scores[i] + "点").join(" / ")
+  ].join("\n");
+
+  document.querySelectorAll("#s-results .stage").forEach(el => el.classList.remove("in"));
+  show("s-results", "Game " + state.gameNo + " · Result");
+
+  runStages([
+    { wait: 1500, run: () => {
+        reveal("st-drum");
+        const w = $("drum-word");
+        if (reducedMotion() || silentEffects) return;
+        w.classList.add("rolling");
+        rollTimer = setInterval(() => {
+          w.textContent = KEYWORDS[Math.floor(Math.random() * KEYWORDS.length)];
+          sfx.roll();
+        }, 70);
+      } },
+    { wait: 950, run: () => {
+        if (rollTimer){ clearInterval(rollTimer); rollTimer = null; }
+        const w = $("drum-word");
+        w.classList.remove("rolling");
+        w.textContent = state.keyword;
+        w.classList.remove("pop");
+        void w.offsetWidth;
+        w.classList.add("pop");
+        sfx.pop();
+      } },
+    { wait: 700 + spies.length * 150, run: () => {
+        $("identity-row").innerHTML =
+          spies.map((i, k) => '<span class="badge brass" style="animation-delay:'+(k*0.14)+'s">SPY '+esc(state.players[i])+'</span>').join("") +
+          civilians.map((i, k) => '<span class="badge" style="animation-delay:'+((spies.length + k)*0.14)+'s">'+esc(state.players[i])+'</span>').join("");
+        reveal("st-identity");
+        const total = spies.length + civilians.length;
+        for (let k = 0; k < total; k++) effectLater(() => sfx.chip(), k * 140);
+      } },
+    { wait: 1050, run: () => {
+        $("verdict").className = "verdict " + vClass;
+        $("verdict-kicker").textContent = kicker;
+        $("verdict-title").textContent = title;
+        $("verdict-sub").innerHTML = sub;
+        reveal("st-verdict");
+        $("verdict").classList.add("flash");
+        if (vClass === "civ") sfx.stingCiv();
+        else if (vClass === "spy") sfx.stingSpy();
+        else sfx.stingNone();
+      } },
+    { wait: 650, run: () => reveal("st-notes") },
+    { wait: 950, run: () => {
+        const maxScore = Math.max(WIN_SCORE, best);
+        $("score-board").innerHTML = rank.map((i, place) =>
+          '<div class="score">' +
+            '<span class="rank">'+(1+rank.filter(j=>state.scores[j]>state.scores[i]).length)+'</span>' +
+            '<span class="avatar">'+esc(initials(state.players[i]))+'</span>' +
+            '<span class="score-main">' +
+              '<span class="score-name">'+esc(state.players[i]) +
+                (spySet.has(i) ? '<span class="score-tag">SPY</span>' : '') + '</span>' +
+              '<span class="bar '+(state.scores[i] === best && best > 0 ? "lead" : "")+'">' +
+                '<span data-w="'+Math.min(100, Math.round(state.scores[i] / maxScore * 100))+'"></span></span>' +
+            '</span>' +
+            '<span class="score-delta '+(delta[i] ? "up" : "zero")+'">'+(delta[i] ? "+" + delta[i] : "±0")+'</span>' +
+            '<span class="score-total" data-from="'+prevScores[i]+'" data-to="'+state.scores[i]+'">'+prevScores[i]+'</span>' +
+          '</div>'
+        ).join("") + (winners.length
+          ? '<div class="win-note">🏆 '+winners.map(i => esc(state.players[i])).join("、")+' が '+WIN_SCORE+'点に到達 — 優勝！</div>'
+          : "");
+        reveal("st-score");
+        const epoch=fxEpoch, skipTicks=silentEffects||reducedMotion();
+        requestAnimationFrame(() => {
+          if(epoch!==fxEpoch||state.screen!=="s-results") return;
+          $("score-board").querySelectorAll(".bar > span").forEach(s => { s.style.width = s.dataset.w + "%"; });
+          $("score-board").querySelectorAll(".score-total").forEach(s => {
+            const from = Number(s.dataset.from), to = Number(s.dataset.to);
+            countUp(s, from, to);
+            if(!skipTicks) for (let k = 0; k < to - from; k++) effectLater(() => sfx.tick(), k * 160);
+          });
+        });
+        if (winners.length) effectLater(() => { confetti(); sfx.win(); }, 420);
+      } },
+    { wait: 250, run: () => reveal("st-breakdown") },
+    { wait: 250, run: () => reveal("st-log") },
+    { wait: 200, run: () => reveal("st-actions") },
+    { wait: 0, run: () => reveal("st-rules") }
+  ]);
+}
+
+async function shareResult(){
+ if(state.screen!=="s-results") return;
+ const btn=$("btn-share");
+ try{await navigator.clipboard.writeText(lastResultText);btn.textContent="コピーしました";}
+ catch(e){
+  const ta=$("copy-result");ta.value=lastResultText;ta.classList.remove("hidden");ta.focus();ta.select();
+  btn.textContent="自動コピーできません。下のテキストを選択してコピー";
+ }
+}
+
+function resetAll(){
+  cancelStages();
+  clearSave();
+  state.count = 0; state.players = []; state.scores = []; state.gameNo = 0;
+  state.spies = []; state.keyword = ""; state.revealed = new Set();
+  state.round = 1; state.turn = 0; state.order = []; state.log = [];
+  state.votes = {}; state.voted = new Set(); state.activeVoter = null;
+  state.draftVote = []; state.voteOrder = []; state.lastDelta = null;
+  const cv = document.getElementById("confetti");
+  if (cv) cv.remove();
+  buildSetup();
+  selectCount(4);
+  show("s-setup", "Setup");
+}
+
+/* In-page confirmation: works in sandboxed embeds without allow-modals. */
+let confirmAction=null, confirmFocus=null;
+function askConfirmation(message,action,label="続ける"){
+ if(confirmAction) return;
+ confirmAction=action;confirmFocus=document.activeElement;
+ $("confirm-message").textContent=message;$("confirm-yes").textContent=label;
+ $("confirm-layer").classList.remove("hidden");document.querySelector(".app").inert=true;
+ $("confirm-no").focus();
+}
+function closeConfirmation(accepted){
+ const action=confirmAction;if(!action)return;
+ confirmAction=null;$("confirm-layer").classList.add("hidden");document.querySelector(".app").inert=false;
+ if(confirmFocus?.isConnected)confirmFocus.focus();confirmFocus=null;
+ if(accepted)action();
+}
+$("confirm-yes").onclick=()=>closeConfirmation(true);
+$("confirm-no").onclick=()=>closeConfirmation(false);
+$("confirm-layer").addEventListener("keydown",e=>{
+ if(e.key==="Escape"){e.preventDefault();closeConfirmation(false);}
+ if(e.key==="Tab"){
+  e.preventDefault();(document.activeElement===$("confirm-yes")?$("confirm-no"):$("confirm-yes")).focus();
+ }
+});
+/* ================= wiring ================= */
+$("btn-start").addEventListener("click", startGame);
+$("btn-autoname").addEventListener("click", autoName);
+$("btn-submit-word").addEventListener("click", submitWord);
+$("word-input").addEventListener("compositionstart",()=>{composing=true;});
+$("word-input").addEventListener("compositionend",()=>{composing=false;compositionEnded=performance.now();});
+$("word-input").addEventListener("input",()=>{state.wordDraft=$("word-input").value;saveGame();});
+$("word-input").addEventListener("keydown", e=>{
+ if(e.key==="Enter"&&!e.isComposing&&e.keyCode!==229&&!composing){e.preventDefault();submitWord();}
+});
+$("btn-confirm-vote").addEventListener("click", confirmVote);
+$("btn-next-round").addEventListener("click", newRound);
+$("btn-reset").addEventListener("click", ()=>askConfirmation("スコアと記録を破棄して最初から始めますか？",resetAll,"最初から始める"));
+$("btn-back").addEventListener("click", goBack);
+$("btn-sound").addEventListener("click", toggleSound);
+$("btn-share").addEventListener("click", shareResult);
+$("btn-resume").addEventListener("click", resumeGame);
+$("btn-discard").addEventListener("click", ()=>askConfirmation("保存中のゲームを破棄しますか？",()=>{clearSave();paintResume();},"破棄する"));
+$("s-results").addEventListener("click", (e) => {
+  if (stageQueue.length && !e.target.closest("button")) flushStages();
+});
+
+document.addEventListener("pointerdown", (e) => {
+  const t = e.target.closest("button, .cover");
+  if (!t || t.disabled) return;
+  if (t.id === "btn-sound" || t.id === "cover" || t.id === "btn-submit-word" || t.id === "btn-confirm-vote") return;
+  sfx.tap();
+}, { passive:true });
+
+document.addEventListener("visibilitychange",()=>{
+ if(!document.hidden) return;
+ saveGame();stopAudio();
+ if(state.screen==="s-reveal-card") renderRevealList();
+ else if(state.screen==="s-vote-card") renderVoteList();
+ else if(state.screen==="s-results") flushStages();
+});
+window.addEventListener("pagehide",saveGame);
+function paintStorage(){
+ const el=$("storage-status");
+ el.textContent=storageOK?"この端末・ブラウザに進行を自動保存します。":"この環境では保存できません。画面を閉じると進行が失われます。";
+ el.classList.toggle("warn",!storageOK);
+}
+paintSoundBtn();
+buildSetup();
+selectCount(4);
+show("s-setup", "Setup");
+store.setItem("linq-storage-check","1");store.removeItem("linq-storage-check");paintStorage();
+$("release-label").textContent="LINQ · "+BUILD+" · リリース候補版";
+</script>
+</body>
+</html>
