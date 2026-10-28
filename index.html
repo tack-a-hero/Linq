@@ -1176,10 +1176,10 @@ function openReveal(idx){
   $("cover").addEventListener("click", () => {
     // Secret screens are silent and non-vibrating.
     $("reveal-slot").innerHTML = isSpy
-      ? '<div class="role"><p class="role-label">Your card</p><p class="role-keyword">'+esc(state.keyword)+'</p>' +
+      ? '<div class="role"><p class="role-label">機密カード</p><p class="role-keyword">'+esc(state.keyword)+'</p>' +
         '<p class="role-note">あなたはスパイ。相棒も同じキーワードを持っています。</p>' +
         '<span class="badge role-rule">相棒とバレずに繋がる</span></div>'
-      : '<div class="role"><p class="role-label">Your card</p><p class="role-keyword">キーワードなし</p>' +
+      : '<div class="role"><p class="role-label">機密カード</p><p class="role-keyword">キーワードなし</p>' +
         '<p class="role-note">あなたは非スパイ。それらしい言葉でごまかしながらスパイを探しましょう。</p>' +
         '<span class="badge role-rule">スパイを2人見抜く</span></div>';
     $("reveal-actions").innerHTML = '<button class="btn btn-primary" id="btn-hide">確認した — 次の人へ</button>';
@@ -1710,5 +1710,72 @@ show("s-setup", "Setup");
 store.setItem("linq-storage-check","1");store.removeItem("linq-storage-check");paintStorage();
 $("release-label").textContent="LINQ · "+BUILD+" · リリース候補版";
 </script>
+
+<style>
+html.reload-protected,html.reload-protected body{overscroll-behavior-y:none}
+</style>
+<script>
+/* Prevent accidental refresh during play without disabling normal scrolling or zoom. */
+(()=>{
+ const playing=()=>!!document.querySelector(".screen:not(.hidden):not(#s-setup):not(#s-results)");
+ const sync=()=>document.documentElement.classList.toggle('reload-protected',playing());
+ new MutationObserver(sync).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden']});
+ sync();
+ window.addEventListener('beforeunload',e=>{
+  if(!playing())return;
+  e.preventDefault();e.returnValue='';
+ });
+ window.addEventListener('keydown',e=>{
+  if(playing()&&(e.key==='F5'||((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='r')))e.preventDefault();
+ });
+ let touch=null;
+ document.addEventListener('touchstart',e=>{
+  touch=e.touches.length===1?{x:e.touches[0].clientX,y:e.touches[0].clientY}:null;
+ },{passive:true});
+ document.addEventListener('touchmove',e=>{
+  if(!playing()||!touch||e.touches.length!==1)return;
+  const t=e.touches[0],dy=t.clientY-touch.y,dx=t.clientX-touch.x;
+  touch={x:t.clientX,y:t.clientY};
+  if(dy<=0||dy<=Math.abs(dx))return;
+  const canScrollUp=e.composedPath().some(el=>el instanceof Element&&
+   el.scrollHeight>el.clientHeight+1&&el.scrollTop>0&&
+   /^(auto|scroll|overlay)$/.test(getComputedStyle(el).overflowY));
+  if(!canScrollUp&&(document.scrollingElement?.scrollTop||0)<=0&&e.cancelable)e.preventDefault();
+ },{passive:false});
+ const reset=()=>{touch=null};
+ document.addEventListener('touchend',reset,{passive:true});
+ document.addEventListener('touchcancel',reset,{passive:true});
+})();
+</script>
+<style id="tabletop-edition">
+:root{--tabletop-back:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iNjAwIiB2aWV3Qm94PSIwIDAgNDAwIDYwMCI+PGRlZnM+PHBhdHRlcm4gaWQ9ImgiIHdpZHRoPSIxNCIgaGVpZ2h0PSIxNCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTTAgMTRMMTQgME0tNyA3TDctN003IDIxTDIxIDciIHN0cm9rZT0iI2RiZDJiNSIgc3Ryb2tlLXdpZHRoPSIuNDUiIG9wYWNpdHk9Ii4xNyIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjQwMCIgaGVpZ2h0PSI2MDAiIHJ4PSIxNiIgZmlsbD0iIzFjMzAyYyIvPjxyZWN0IHg9IjEwIiB5PSIxMCIgd2lkdGg9IjM4MCIgaGVpZ2h0PSI1ODAiIHJ4PSIxMSIgZmlsbD0idXJsKCNoKSIgc3Ryb2tlPSIjZGJkMmI1IiBzdHJva2Utd2lkdGg9IjEuNSIvPjxyZWN0IHg9IjIyIiB5PSIyMiIgd2lkdGg9IjM1NiIgaGVpZ2h0PSI1NTYiIHJ4PSIzIiBmaWxsPSJub25lIiBzdHJva2U9IiNkYmQyYjUiIHN0cm9rZS13aWR0aD0iLjYiLz48cGF0aCBkPSJNMzQgNzNoMzMyTTM0IDUxOGgzMzIiIHN0cm9rZT0iI2RiZDJiNSIgb3BhY2l0eT0iLjYiLz48ZyBmaWxsPSIjZGJkMmI1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iR2VvcmdpYSxzZXJpZiI+PHRleHQgeD0iMjAwIiB5PSI1OCIgZm9udC1zaXplPSIxMSIgbGV0dGVyLXNwYWNpbmc9IjMiPkJVUkVBVSBPRiBDT05ORUNUSU9OUzwvdGV4dD48dGV4dCB4PSIyMDAiIHk9IjEzMiIgZm9udC1zaXplPSIyNiIgbGV0dGVyLXNwYWNpbmc9IjQiIGZvbnQtd2VpZ2h0PSJib2xkIj5MSU5RPC90ZXh0Pjx0ZXh0IHg9IjIwMCIgeT0iNDY3IiBmb250LXNpemU9IjEwIiBsZXR0ZXItc3BhY2luZz0iMiI+Q0xBU1NJRklFRCDigKIgRVlFUyBPTkxZPC90ZXh0Pjx0ZXh0IHg9IjIwMCIgeT0iNTUxIiBmb250LXNpemU9IjkiIGxldHRlci1zcGFjaW5nPSI0Ij5UQUJMRVRPUCBDT0xMRUNUSU9OPC90ZXh0PjwvZz48ZyBjb2xvcj0iI2RiZDJiNSI+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxjaXJjbGUgY3g9IjIwMCIgY3k9IjI5NyIgcj0iMTEwIiBzdHJva2Utd2lkdGg9IjEiLz48Y2lyY2xlIGN4PSIyMDAiIGN5PSIyOTciIHI9IjEwMSIgc3Ryb2tlLXdpZHRoPSIuNSIgc3Ryb2tlLWRhc2hhcnJheT0iMiA1Ii8+PHBhdGggZD0iTTE0NSAyNDVsMTEwIDEwNE0xNDUgMzQ5bDExMC0xMDQiIHN0cm9rZS13aWR0aD0iMSIvPjxyZWN0IHg9IjEyMyIgeT0iMjIxIiB3aWR0aD0iMTU0IiBoZWlnaHQ9IjE1NCIgcng9IjYiIHRyYW5zZm9ybT0icm90YXRlKDQ1IDIwMCAyOTgpIi8+PHBhdGggZD0iTTE3NyAyNzZsLTE2IDE2YTI4IDI4IDAgMCAwIDQwIDQwbDE4LTE4TTIyMyAzMjBsMTYtMTZhMjggMjggMCAwIDAtNDAtNDBsLTE4IDE4TTE4MCAzMThsNDAtNDAiIHN0cm9rZS13aWR0aD0iNyIvPjxwYXRoIGQ9Ik0xMTYgMjk4aDIyTTI2MiAyOThoMjJNMjAwIDIxNHYyMk0yMDAgMzYwdjIyIiBzdHJva2Utd2lkdGg9IjMiLz48Y2lyY2xlIGN4PSIyMDAiIGN5PSIyOTgiIHI9IjQiIGZpbGw9ImN1cnJlbnRDb2xvciIvPjwvZz48ZyBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIxIj48L2c+PC9nPjxnIGZpbGw9IiNkYmQyYjUiPjxwYXRoIGQ9Ik0zNSAzNGgyMnYySDM3djIwaC0yek0zNjUgMzRoLTIydjJoMjB2MjBoMnpNMzUgNTY2aDIydi0ySDM3di0yMGgtMnpNMzY1IDU2NmgtMjJ2LTJoMjB2LTIwaDJ6Ii8+PC9nPjwvc3ZnPg==");--tabletop-emblem:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjcwIDE3MCAyNjAgMjYwIj48ZyBjb2xvcj0iI2RiZDJiNSI+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiPjxjaXJjbGUgY3g9IjIwMCIgY3k9IjI5NyIgcj0iMTEwIiBzdHJva2Utd2lkdGg9IjEiLz48Y2lyY2xlIGN4PSIyMDAiIGN5PSIyOTciIHI9IjEwMSIgc3Ryb2tlLXdpZHRoPSIuNSIgc3Ryb2tlLWRhc2hhcnJheT0iMiA1Ii8+PHBhdGggZD0iTTE0NSAyNDVsMTEwIDEwNE0xNDUgMzQ5bDExMC0xMDQiIHN0cm9rZS13aWR0aD0iMSIvPjxyZWN0IHg9IjEyMyIgeT0iMjIxIiB3aWR0aD0iMTU0IiBoZWlnaHQ9IjE1NCIgcng9IjYiIHRyYW5zZm9ybT0icm90YXRlKDQ1IDIwMCAyOTgpIi8+PHBhdGggZD0iTTE3NyAyNzZsLTE2IDE2YTI4IDI4IDAgMCAwIDQwIDQwbDE4LTE4TTIyMyAzMjBsMTYtMTZhMjggMjggMCAwIDAtNDAtNDBsLTE4IDE4TTE4MCAzMThsNDAtNDAiIHN0cm9rZS13aWR0aD0iNyIvPjxwYXRoIGQ9Ik0xMTYgMjk4aDIyTTI2MiAyOThoMjJNMjAwIDIxNHYyMk0yMDAgMzYwdjIyIiBzdHJva2Utd2lkdGg9IjMiLz48Y2lyY2xlIGN4PSIyMDAiIGN5PSIyOTgiIHI9IjQiIGZpbGw9ImN1cnJlbnRDb2xvciIvPjwvZz48L2c+PC9zdmc+");}
+
+/* Every agent receives the same physical credential, regardless of role. */
+:root{--ink:#132723;--ink-2:#172c27;--panel:#1a312b;--panel-2:#203a32;--raised:#284238;--brass:#d9c790;--brass-hi:#f0e1b3;--bone:#f1ead8;--bone-2:#d1d5be;--bone-3:#a9b5a0}
+body{background:radial-gradient(ellipse at top,#304b3c66,transparent 65%),var(--ink)}
+.topbar{background:#132723f5;border-bottom:1px solid #d5c48a44}
+.card{border-radius:4px;border-color:#c7c5a32e;box-shadow:0 4px 0 #081b1666,0 14px 28px #0002}
+#reveal-list .row,#vote-list .row{background:#dedac9;color:#25382f;border:1px solid #a2a78c;border-radius:4px;box-shadow:0 3px 0 #76877133;padding:13px 15px;position:relative}
+#reveal-list .row .row-name,#vote-list .row .row-name{color:#25382f;font-size:16px}
+#reveal-list .row .row-meta,#vote-list .row .row-meta{color:#63705d}
+#reveal-list .row .avatar,#vote-list .row .avatar{border-radius:2px;background:#c9c9ae;border:1px solid #909a80;color:#314535;font-family:var(--mono)}
+#reveal-list .row.done{opacity:.68;box-shadow:none;background:#aeb8a44d;color:var(--bone)}
+#reveal-slot{max-width:420px;margin-left:auto;margin-right:auto;width:100%}
+.cover{min-height:302px;border-radius:6px;border:1px solid #bdbe9c;background:var(--tabletop-back) center/contain no-repeat,#1c302c;padding:218px 16px 16px;box-shadow:0 4px 0 #78846a,0 12px 24px #0003}
+.cover .seal{display:none}.cover-text,.cover-sub{background:#1c302cf5;margin:0;color:#e9dfbd;padding:5px 8px}.cover-text{font-size:13px}.cover-sub{font-size:11px}
+.role{min-height:302px;border-radius:5px!important;border:1px solid #9caa8f!important;background:repeating-linear-gradient(0deg,transparent 0 27px,#34483809 27px 28px),#e6e1cc!important;color:#253b31;padding:30px 22px;box-shadow:0 4px 0 #7b8d70,0 16px 25px #0003}
+.role:before{background:var(--tabletop-emblem) center/180px 180px no-repeat;opacity:.07;inset:0}
+.role-label{color:#67785f;border-top:1px solid #8e9f83;border-bottom:1px solid #8e9f83;padding:6px 15px;letter-spacing:.22em;font-size:10px}
+.role-keyword{color:#213d30}.role-note{color:#4d604c}.role .role-rule{color:#39523e;border-color:#8b9f80;background:#d0d6b9}
+#log,#log-vote,#log-result,#score-board,#vote-breakdown{background:repeating-linear-gradient(0deg,transparent 0 31px,#3b554713 31px 32px),#e3deca;color:#253c30;border:1px solid #a1ad91;border-radius:3px;box-shadow:0 4px 0 #7d8b6a}
+#log .log-name,#log-vote .log-name,#log-result .log-name,#score-board .rank{color:#65775f}
+#log .log-round,#log-vote .log-round,#log-result .log-round,#score-board .score-total{color:#365b43}
+#log .log-item,#log-vote .log-item,#log-result .log-item,#score-board .score{border-color:#83987844}
+#score-board .score-tag,#score-board .score-delta{color:#4c7759}#score-board .score-name{color:#2c4134}
+.pick{border-radius:4px;background:#1e3930;border-color:#a2ad8c40}.pick[aria-pressed=true]{background:#c9c89e;color:#243d2e;border-color:#ddd4a4}
+.btn{border-radius:5px}.section-title{letter-spacing:.12em}.rail-bar{height:4px;border-radius:0}.rail-label{font-family:var(--mono)}
+
+#vote-breakdown .log-name,#vote-breakdown .log-word,#vote-breakdown .log-target,#vote-breakdown strong{color:#3f5e4b}#score-board .avatar{background:#c8ceb4;border-color:#92a17f;color:#3f5f46}#log .empty,#log-vote .empty,#log-result .empty{color:#627458}
+</style>
 </body>
 </html>
